@@ -39,7 +39,7 @@ val Block.buildScore: Float
         //如果有更好的建筑积分规则，请修改此处
         return buildCost / 60f //建筑时间(单位秒)
     }
-val Player.isIdle get() = velocity().isZero(1e-9F) && !isBuilding() &&!isShooting()
+val Player.isIdle get() = unit().vel.isZero(1e-9F) && !builder().isBuilding && !shooting()
 
 @Savable
 val statisticsData = mutableMapOf<String, StatisticsData>()
@@ -62,7 +62,7 @@ listen<EventType.ResetEvent> {
     statisticsData.clear()
 }
 listen<EventType.PlayerJoin> {
-    it.player.data.pvpTeam = it.player.team
+    it.player.data.pvpTeam = it.player.team()
 }
 
 onEnable {
@@ -78,7 +78,7 @@ onEnable {
     }
 }
 listen<EventType.BlockBuildEndEvent> {
-    it.player?.data?.apply {
+    it.unit.player?.data?.apply {
         if (it.breaking)
             breakBlock++
         else

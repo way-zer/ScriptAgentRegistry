@@ -42,7 +42,7 @@ listen<EventType.PlayerBanEvent> {
 }
 
 command("list", "列出当前玩家", {}) {
-    val list = playerGroup.all().map {
+    val list = playerGroup.map {
         "{player.name}[white]([red]{player.shortID}[white]) ".with("player" to it)
     }
     reply("{list}".with("list" to list))

@@ -2,6 +2,7 @@ package wayzer.ext
 
 import mindustry.game.EventType
 import mindustry.game.Gamemode
+import mindustry.gen.Groups
 import java.time.Duration
 import kotlin.math.ceil
 
@@ -15,14 +16,9 @@ listen<EventType.WorldLoadEvent> {
         broadcast("[yellow]PVP保护时间,禁止在其他基地攻击(持续{time:分钟})".with("time" to Duration.ofSeconds(leftTime.toLong())), quite = true)
         suspend fun checkAttack(time: Int) = repeat(time) {
             delay(1000)
-            unitGroup.forEach {
-                if (state.teams.closestEnemyCore(it.x, it.y, it.team)?.withinDst(it, state.rules.enemyCoreBuildRadius) == true) {
-                    it.kill()
-                }
-            }
-            playerGroup.forEach {
-                if (it.isShooting && state.teams.closestEnemyCore(it.x, it.y, it.team)?.withinDst(it, state.rules.enemyCoreBuildRadius) == true) {
-                    it.sendMessage("[red]PVP保护时间,禁止在其他基地攻击".with())
+            Groups.unit.forEach {
+                if (state.teams.closestEnemyCore(it.x, it.y, it.team)?.within(it, state.rules.enemyCoreBuildRadius) == true) {
+                    it.player?.sendMessage("[red]PVP保护时间,禁止在其他基地攻击".with())
                     it.kill()
                 }
             }
