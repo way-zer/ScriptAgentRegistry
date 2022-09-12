@@ -1,6 +1,6 @@
 package coreStandalone.lib
 
-import cf.wayzer.scriptAgent.define.ISubScript
+import cf.wayzer.scriptAgent.define.Script
 import cf.wayzer.scriptAgent.define.ScriptDsl
 import coreLibrary.lib.ColorApi
 import coreLibrary.lib.CommandContext
@@ -8,7 +8,7 @@ import coreLibrary.lib.CommandInfo
 import coreLibrary.lib.Commands
 
 object RootCommands : Commands() {
-    fun tabComplete(args: List<String>): List<String> {
+    suspend fun tabComplete(args: List<String>): List<String> {
         var result: List<String> = emptyList()
         try {
             onComplete(CommandContext().apply {
@@ -16,7 +16,7 @@ object RootCommands : Commands() {
                 replyTabComplete = { result = it;CommandInfo.Return() }
                 arg = args
             })
-        } catch (e: CommandInfo.Return) {
+        } catch (_: CommandInfo.Return) {
         }
         return result
     }
@@ -39,19 +39,19 @@ object RootCommands : Commands() {
      * @param text 输入字符串，应当经过trimInput处理
      * @param prefix 指令前缀,例如'/'
      */
-    fun handleInput(text: String, prefix: String = "") {
+    suspend fun handleInput(text: String, prefix: String = "") {
         if (text.isEmpty()) return
         RootCommands.invoke(CommandContext().apply {
             hasPermission = { true }
             reply = { println(ColorApi.handle(it.toString(), ColorApi::consoleColorHandler)) }
-            this.prefix = if (prefix.isEmpty()) "* " else prefix
+            this.prefix = prefix.ifEmpty { "* " }
             this.arg = text.removePrefix(prefix).split(' ')
         })
     }
 }
 
 @ScriptDsl
-fun ISubScript.command(
+fun Script.command(
     name: String,
     description: String,
     init: CommandInfo.() -> Unit = {}

@@ -1,5 +1,16 @@
 package coreStandalone
 
+command("stop", "结束程序") {
+    body {
+        launch(Job()) {
+            ScriptManager.transaction {
+                addAll()
+                disable()
+            }
+        }
+    }
+}
+
 command("gc", "垃圾回收") {
     body {
         fun getMemory() = Runtime.getRuntime().run { totalMemory() - freeMemory() } / 1024 / 1024
