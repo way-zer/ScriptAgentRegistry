@@ -55,10 +55,12 @@ fun restart() {
             get("/testEnable") {
                 call.respond(enabled.toString())
             }
-            RouteHelper.root.provide(this@Module, this)
+            runBlocking {
+                RouteHelper.root.provide(this@Module, this@routing)
+            }
         }
-        ScriptManager.allScripts.values.forEach { s ->
-            s.inst?.webInit?.forEach { it.invoke(this);true }
+        ScriptManager.allScripts { true }.forEach { s ->
+            s.inst?.webInit?.forEach { it.invoke(this) }
         }
     }.start(false)
 }
@@ -77,7 +79,7 @@ onEnable {
     prepareRestart()
 }
 listenTo<ScriptEnableEvent> {
-    if (script.webInit.getData().isEmpty()) return@listenTo
+    if (!script.dslExists(webInit)) return@listenTo
     prepareRestart()
 }
 onDisable {

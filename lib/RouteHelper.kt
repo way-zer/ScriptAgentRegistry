@@ -2,6 +2,7 @@ package ktor.lib
 
 import cf.wayzer.scriptAgent.Event
 import cf.wayzer.scriptAgent.define.ISubScript
+import cf.wayzer.scriptAgent.define.Script
 import cf.wayzer.scriptAgent.events.ScriptDisableEvent
 import cf.wayzer.scriptAgent.events.ScriptEnableEvent
 import cf.wayzer.scriptAgent.getContextScript
@@ -20,26 +21,22 @@ object RouteHelper {
     }
 
     private val routes_key = DSLBuilder.DataKeyWithDefault("ktor_routes") { mutableSetOf<RouteInfo>() }
-    val ISubScript.routes by routes_key
+    val Script.routes by routes_key
     val root = ServiceRegistry<Route>()
-
-    private fun ISubScript.initRoute(root: Route) {
-        val routes = routes_key.run { get() } ?: return
-        routes.forEach { info ->
-            var route = root.createRouteFromPath(info.path)
-            if (info.method != null)
-                route = route.createChild(HttpMethodRouteSelector(info.method))
-            val before = RouteHandlerList().collect(route)
-            info.body.invoke(route)
-            info.handlerList = RouteHandlerList().collect(route) - before
-        }
-    }
 
     init {
         RouteHelper::class.java.getContextScript().apply {
             listenTo<ScriptEnableEvent>(Event.Priority.After) {
-                root.subscribe(script) {
-                    script.initRoute(it)
+                if (!script.dslExists(routes_key)) return@listenTo
+                root.subscribe(script) { root ->
+                    script.routes.forEach { info ->
+                        var route = root.createRouteFromPath(info.path)
+                        if (info.method != null)
+                            route = route.createChild(HttpMethodRouteSelector(info.method))
+                        val before = RouteHandlerList().collect(route)
+                        info.body.invoke(route)
+                        info.handlerList = RouteHandlerList().collect(route) - before
+                    }
                 }
             }
             listenTo<ScriptDisableEvent> {
@@ -64,6 +61,6 @@ object RouteHelper {
  *   }
  */
 @ContextDsl
-fun ISubScript.route(path: String, method: HttpMethod? = null, body: Route.() -> Unit) {
+fun Script.route(path: String, method: HttpMethod? = null, body: Route.() -> Unit) {
     routes.add(RouteHelper.RouteInfo(path, method, body))
 }
