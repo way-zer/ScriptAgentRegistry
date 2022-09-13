@@ -15,73 +15,41 @@
 package ktor
 
 import cf.wayzer.scriptAgent.events.ScriptEnableEvent
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.module.SimpleModule
-import io.ktor.features.*
-import io.ktor.http.*
-import io.ktor.jackson.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
-import org.slf4j.event.Level
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.*
+import ktor.lib.util.SimpleApplicationEngineEnvironment
 
 val port by config.key(9090, "Web 端口")
-var server: ApplicationEngine? = null
+val scriptThis = this
 
-fun restart() {
-    server?.stop(1000, 5000)
-    server = embeddedServer(Jetty, port = port, parentCoroutineContext = this.coroutineContext) {
-        //uninstallAllFeatures() //useless in current ktor, restart fully
-        install(ContentNegotiation) {
-            jackson {
-                val module = SimpleModule()
-                module.addDeserializer(Parameters::class.java, object : JsonDeserializer<Parameters>() {
-                    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): Parameters {
-                        return Parameters.build {
-                            while (true)
-                                append(p.nextFieldName() ?: break, p.nextTextValue())
-                        }
-                    }
-
-                })
-                registerModule(module)
-            }
-        }
-        install(CallLogging) {
-            level = Level.INFO
-        }
-        routing {
-            get("/testEnable") {
-                call.respond(enabled.toString())
-            }
-            runBlocking {
-                RouteHelper.root.provide(this@Module, this@routing)
-            }
-        }
-        ScriptManager.allScripts { true }.forEach { s ->
-            s.inst?.webInit?.forEach { it.invoke(this) }
-        }
-    }.start(false)
-}
-
-var job: Job? = null
-fun prepareRestart() {
-    job?.cancel()
-    job = launch {
-        delay(5_000)
-        println("重启Web服务器")
-        restart()
-    }
-}
 
 onEnable {
-    prepareRestart()
+    val envBuilder = ApplicationEngineEnvironmentBuilder().apply {
+        parentCoroutineContext = scriptThis.coroutineContext
+        connector { port = scriptThis.port }
+    }
+    val env = SimpleApplicationEngineEnvironment(envBuilder) {
+        ScriptManager.allScripts { it.enabled }.forEach { s ->
+            s.inst!!.webInit.forEach { it() }
+            s.inst!!.ktorInit.forEach { it() }
+        }
+    }
+    val server = embeddedServer(Jetty, env)
+    server.start()
+    onDisable {
+        server.stop(1000, 5000)
+    }
+    @OptIn(FlowPreview::class)
+    reloadFlow.debounce(1000)
+        .onEach { env.reload() }
+        .launchIn(this)
 }
-listenTo<ScriptEnableEvent> {
-    if (!script.dslExists(webInit)) return@listenTo
-    prepareRestart()
-}
-onDisable {
-    server?.stop(1000, 5000)
+
+val reloadFlow = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+listenTo<ScriptEnableEvent>(Event.Priority.After) {
+    if (script.dslExists(webInit) || script.dslExists(ktorInit))
+        reloadFlow.emit(Unit)
 }
