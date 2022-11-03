@@ -5,19 +5,19 @@
 
 package coreStandalone
 
+import coreLibrary.lib.util.withContextClassloader
 import org.jline.reader.*
 import org.jline.utils.AttributedString
 import java.io.ByteArrayOutputStream
 import java.io.InterruptedIOException
 import java.io.PrintStream
 import java.util.logging.Level
-import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 class MyPrintStream(private val block: (String) -> Unit) : PrintStream(ByteArrayOutputStream()) {
     private val bufOut = out as ByteArrayOutputStream
 
-    private var last = -1
+    var last = -1
     override fun write(b: Int) {
         if (last == 13 && b == 10) {// \r\n
             last = -1
@@ -57,11 +57,13 @@ object MyCompleter : Completer {
 }
 
 @OptIn(LoaderApi::class)
-fun handleInput(reader: LineReader) {
+suspend fun handleInput(reader: LineReader) {
     var last = 0
-    while (!Thread.interrupted()) {
+    while (isActive) {
         val line = try {
-            reader.readLine("> ").let(RootCommands::trimInput)
+            runInterruptible {
+                reader.readLine("> ").let(RootCommands::trimInput)
+            }
         } catch (e: InterruptedIOException) {
             return
         } catch (e: UserInterruptException) {
@@ -80,28 +82,25 @@ fun handleInput(reader: LineReader) {
                 continue
             }
             reader.printAbove("exit")
-            runBlocking {
-                ScriptManager.disableAll()
-            }
+            ScriptManager.disableAll()
             exitProcess(1)
         }
         last = 0
         if (line.isEmpty()) continue
-        runBlocking {
-            try {
-                RootCommands.handleInput(line)
-            } catch (e: Throwable) {
-                logger.log(Level.SEVERE, "error when handle input", e)
-            }
+        try {
+            RootCommands.handleInput(line)
+        } catch (e: Throwable) {
+            logger.log(Level.SEVERE, "error when handle input", e)
         }
     }
 }
 
-onEnable {
-    val thread = thread(true, isDaemon = true, contextClassLoader = javaClass.classLoader, name = "Console Reader") {
-        val reader = LineReaderBuilder.builder()
-            .completer(MyCompleter).build() as LineReader
-
+lateinit var reader: LineReader
+fun start() {
+    launch(Dispatchers.IO + CoroutineName("Console Reader")) {
+        reader = withContextClassloader {
+            LineReaderBuilder.builder().completer(MyCompleter).build()
+        }
         val bakOut = System.out
         System.setOut(MyPrintStream {
             reader.printAbove(AttributedString.fromAnsi(it))
@@ -112,7 +111,8 @@ onEnable {
             System.setOut(bakOut)
         }
     }
-    onDisable {
-        thread.interrupt()
-    }
+}
+
+onEnable {
+    start()
 }
