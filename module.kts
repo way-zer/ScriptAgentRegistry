@@ -1,16 +1,11 @@
 @file:Depends("coreLibrary")
-@file:Import("io.ktor:ktor-server-jetty:1.6.2", mavenDepends = true)
-@file:Import("com.fasterxml.jackson.core:jackson-databind:2.12.3", mavenDependsSingle = true)
-@file:Import("com.fasterxml.jackson.core:jackson-core:2.12.3", mavenDependsSingle = true)
-@file:Import("com.fasterxml.jackson.core:jackson-annotations:2.12.3", mavenDependsSingle = true)
-@file:Import("io.ktor:ktor-jackson:1.6.2", mavenDepends = true)
-@file:Import("javax.servlet:javax.servlet-api:3.1.0", mavenDependsSingle = true)
+@file:Import("io.ktor:ktor-server-jetty-jvm:2.2.4", mavenDepends = true)
 @file:Import("ktor.lib.*", defaultImport = true)
-@file:Import("io.ktor.application.*", defaultImport = true)
 @file:Import("io.ktor.http.*", defaultImport = true)
-@file:Import("io.ktor.routing.*", defaultImport = true)
-@file:Import("io.ktor.request.*", defaultImport = true)
-@file:Import("io.ktor.response.*", defaultImport = true)
+@file:Import("io.ktor.server.application.*", defaultImport = true)
+@file:Import("io.ktor.server.routing.*", defaultImport = true)
+@file:Import("io.ktor.server.request.*", defaultImport = true)
+@file:Import("io.ktor.server.response.*", defaultImport = true)
 
 package ktor
 
@@ -26,18 +21,17 @@ val scriptThis = this
 
 
 onEnable {
-    val envBuilder = ApplicationEngineEnvironmentBuilder().apply {
+    val env = SimpleApplicationEngineEnvironment {
         parentCoroutineContext = scriptThis.coroutineContext
         connector { port = scriptThis.port }
-    }
-    val env = SimpleApplicationEngineEnvironment(envBuilder) {
-        ScriptManager.allScripts { it.enabled }.forEach { s ->
-            s.inst!!.webInit.forEach { it() }
-            s.inst!!.ktorInit.forEach { it() }
+        module {
+            ScriptRegistry.allScripts { it.enabled }.forEach { s ->
+                s.inst!!.webInit.forEach { it() }
+                s.inst!!.ktorInit.forEach { it() }
+            }
         }
     }
-    val server = embeddedServer(Jetty, env)
-    server.start()
+    val server = embeddedServer(Jetty, env).start()
     onDisable {
         server.stop(1000, 5000)
     }

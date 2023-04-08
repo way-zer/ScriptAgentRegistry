@@ -1,11 +1,16 @@
+@file:Import("io.ktor:ktor-server-call-logging-jvm:2.2.4", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-content-negotiation-jvm:2.2.4", mavenDepends = true)
+@file:Import("io.ktor:ktor-serialization-jackson-jvm:2.2.4", mavenDepends = true)
+
 package ktor
 
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
-import io.ktor.features.*
-import io.ktor.jackson.*
+import io.ktor.serialization.jackson.*
+import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.contentnegotiation.*
 import org.slf4j.event.Level
 
 ktorInit {
@@ -19,7 +24,6 @@ ktorInit {
                             append(p.nextFieldName() ?: break, p.nextTextValue())
                     }
                 }
-
             })
             registerModule(module)
         }
@@ -27,9 +31,10 @@ ktorInit {
     install(CallLogging) {
         level = Level.INFO
     }
-    routing {
-        get("/testEnable") {
-            call.respond("Powered by ktor and ScriptAgent")
-        }
+}
+
+routing {
+    get("/testEnable") {
+        call.respond("Powered by ktor and ScriptAgent")
     }
 }
