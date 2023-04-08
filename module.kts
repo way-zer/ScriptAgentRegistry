@@ -1,5 +1,7 @@
 @file:Depends("coreLibrary")
 @file:Import("io.ktor:ktor-server-jetty-jvm:2.2.4", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-content-negotiation-jvm:2.2.4", mavenDepends = true)
+@file:Import("io.ktor:ktor-serialization-jackson-jvm:2.2.4", mavenDepends = true)
 @file:Import("ktor.lib.*", defaultImport = true)
 @file:Import("io.ktor.http.*", defaultImport = true)
 @file:Import("io.ktor.server.application.*", defaultImport = true)

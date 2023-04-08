@@ -1,6 +1,4 @@
 @file:Import("io.ktor:ktor-server-call-logging-jvm:2.2.4", mavenDepends = true)
-@file:Import("io.ktor:ktor-server-content-negotiation-jvm:2.2.4", mavenDepends = true)
-@file:Import("io.ktor:ktor-serialization-jackson-jvm:2.2.4", mavenDepends = true)
 
 package ktor
 
