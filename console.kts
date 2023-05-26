@@ -1,6 +1,6 @@
-//@file:Import("org.jline:jline-terminal-jansi:3.21.0", mavenDependsSingle = true)
+@file:Import("org.jline:jline-terminal-jansi:3.21.0", mavenDependsSingle = true)
 @file:Import("org.jline:jline-terminal:3.21.0", mavenDependsSingle = true)
-//@file:Import("org.fusesource.jansi:jansi:2.4.0", mavenDependsSingle = true)
+@file:Import("org.fusesource.jansi:jansi:2.4.0", mavenDependsSingle = true)
 @file:Import("org.jline:jline-reader:3.21.0", mavenDependsSingle = true)
 
 package coreStandalone
