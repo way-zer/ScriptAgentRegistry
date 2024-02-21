@@ -5,10 +5,8 @@ import cf.wayzer.scriptAgent.Event
 import cf.wayzer.scriptAgent.define.Script
 import cf.wayzer.scriptAgent.emitAsync
 import coreLibrary.lib.PlaceHoldString
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import mindustry.Vars
 import mindustry.game.Gamemode
 import mindustry.maps.Map
@@ -56,12 +54,15 @@ object MapRegistry : MapProvider() {
     override suspend fun searchMaps(search: String?): List<BaseMapInfo> {
         @Suppress("NAME_SHADOWING")
         val search = search.takeUnless { it == "all" || it == "display" }
-        return providers.flatMap { it.searchMaps(search) }
+        return coroutineScope {
+            providers.map { async { it.searchMaps(search) } }
+                .flatMap { it.await() }
+        }
     }
 
     /**Dispatch should be Dispatchers.game*/
     override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
-        return providers.asFlow().map { it.findById(id, reply) }.filterNotNull().firstOrNull()
+        return providers.firstNotNullOf { it.findById(id, reply) }
     }
 
     suspend fun nextMapInfo(

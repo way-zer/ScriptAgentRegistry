@@ -60,6 +60,7 @@ object MapManager {
             }
         }).emitAsync()
         if (event.cancelled) return
+        thisContextScript().logger.info("loadMap [${info.id}]${info.map.name()}")
         if (!Vars.net.server()) Vars.netServer.openServer()
         try {
             current.beforeReset?.invoke()

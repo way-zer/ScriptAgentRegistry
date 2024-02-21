@@ -21,6 +21,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.time.Duration
+import java.util.logging.Level
 import java.util.zip.InflaterInputStream
 import mindustry.maps.Map as MdtMap
 
@@ -86,15 +87,20 @@ MapRegistry.register(this, object : MapProvider() {
             else -> search
         }
         searchCache.getIfPresent(mappedSearch)?.let { return it }
-        val maps = httpGet("$webRoot/maps/list?prePage=100&search=${URLEncoder.encode(mappedSearch, "utf-8")}")
-            .let { JsonReader().parse(it.toString(Charset.defaultCharset())) }
-            .map {
-                val id = it.getInt("id")
-                val hash = it.getString("latest")
-                newMapInfo(id, hash, it.toStringMap(), it.getString("mode", "unknown"))
-            }
-        searchCache.put(mappedSearch, maps)
-        return maps
+        try {
+            val maps = httpGet("$webRoot/maps/list?prePage=100&search=${URLEncoder.encode(mappedSearch, "utf-8")}", retry=1)
+                .let { JsonReader().parse(it.toString(Charset.defaultCharset())) }
+                .map {
+                    val id = it.getInt("id")
+                    val hash = it.getString("latest")
+                    newMapInfo(id, hash, it.toStringMap(), it.getString("mode", "unknown"))
+                }
+            searchCache.put(mappedSearch, maps)
+            return maps
+        } catch (e: Exception) {
+            logger.log(Level.WARNING, "Fail to searchMap($search)", e)
+            return emptyList()
+        }
     }
 
     override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
@@ -103,14 +109,19 @@ MapRegistry.register(this, object : MapProvider() {
             reply?.invoke("[red]本服未开启网络换图，请联系服主开启".with())
             return null
         }
-        val info = httpGet("$webRoot/maps/thread/$id/latest")
-            .let { JsonReader().parse(it.toString(Charset.defaultCharset())) }
-        val hash = info.getString("hash")
-        val tags = info.get("tags").toStringMap()
-        return newMapInfo(id, hash, tags, info.getString("mode", "unknown")).run {
-            MapInfo(id, map, mode) {
-                loadMap(map, hash)
+        try {
+            val info = httpGet("$webRoot/maps/thread/$id/latest")
+                .let { JsonReader().parse(it.toString(Charset.defaultCharset())) }
+            val hash = info.getString("hash")
+            val tags = info.get("tags").toStringMap()
+            return newMapInfo(id, hash, tags, info.getString("mode", "unknown")).run {
+                MapInfo(id, map, mode) {
+                    loadMap(map, hash)
+                }
             }
+        } catch (e: Exception) {
+            logger.log(Level.WARNING, "Fail to findById($id)", e)
+            return null
         }
     }
 })
