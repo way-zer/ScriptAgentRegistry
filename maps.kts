@@ -116,7 +116,7 @@ listen<EventType.GameOverEvent> { event ->
         MapManager.loadMap(map)
     }
 }
-listen<WorldLoadBeginEvent> {
+listen<WorldLoadBeginEvent>(insert = true) {
     if (MapManager.tmpRules == null) return@listen
     state.map = MapManager.current.map
     state.rules = MapManager.tmpRules
