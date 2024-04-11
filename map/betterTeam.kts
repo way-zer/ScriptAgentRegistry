@@ -42,7 +42,7 @@ onEnable {
     onDisable { netServer.assigner = backup }
     updateBannedTeam(true)
 }
-listen<EventType.PlayEvent> { updateBannedTeam(true) }
+listen<EventType.WorldLoadEvent> { updateBannedTeam(true) }
 
 val savedTeams = mutableMapOf<String, Team>()
 listen<EventType.ResetEvent> {

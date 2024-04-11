@@ -18,7 +18,7 @@ val Unit.inEnemyArea: Boolean
                 dst(closestCore) < state.rules.enemyCoreBuildRadius)
     }
 
-listen<EventType.PlayEvent> {
+listen<EventType.WorldLoadEvent> {
     launch {
         var leftTime = state.rules.tags.getInt("@pvpProtect", time)
         if (state.rules.mode() != Gamemode.pvp || time <= 0) return@launch

@@ -78,7 +78,7 @@ onDisable {
 listen<EventType.PlayerJoin> {
     it.player.data.pvpTeam = it.player.team()
 }
-listen<EventType.PlayEvent> {
+listen<EventType.WorldLoadEvent> {
     launch(Dispatchers.gamePost) {
         Groups.player.forEach { p ->
             p.data.pvpTeam = p.team()

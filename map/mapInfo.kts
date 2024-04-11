@@ -51,7 +51,7 @@ fun Player.showInfo() {
     Call.label(con, msg, 2 * 60f, core()?.x ?: 0f, core()?.y ?: 0f)
 }
 
-listen<EventType.PlayEvent> {
+listen<EventType.WorldLoadEvent> {
     launch(Dispatchers.gamePost) {
         Groups.player.forEach {
             it.showInfo()

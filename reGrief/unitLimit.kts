@@ -70,7 +70,7 @@ fun checkNextWave() {
         gameOverWave = state.wave
     }
 }
-listen<EventType.PlayEvent> { checkNextWave() }
+listen<EventType.WorldLoadEvent> { checkNextWave() }
 listen<EventType.WaveEvent> {
     if (gameOverWave > 0 && state.wave > gameOverWave && !state.gameOver) {
         broadcast("[red]到达终结波,自动投降".with())
