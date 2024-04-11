@@ -42,7 +42,7 @@ listen<EventType.ResetEvent> {
     }
 }
 
-listen<EventType.PlayEvent> {
+listen<EventType.WorldLoadEvent> {
     //load scripts
     val scriptId = ScriptManager.getScriptNullable("$moduleId/${MapManager.current.id}")?.id
         ?: state.rules.tags.get("@mapScript")
