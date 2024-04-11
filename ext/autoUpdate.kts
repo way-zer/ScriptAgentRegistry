@@ -17,6 +17,7 @@ val enableUpdate by config.key(false, "是否开启自动更新")
 val source by config.key("Anuken/Mindustry", "服务端来源，Github仓库")
 val onlyInNight by config.key(false, "仅在凌晨自动更新", "本地时间1:00到7:00")
 val useMirror by config.key(false, "使用镜像加速下载")
+val mirror by config.key("https://gh.tinylake.tech", "GH镜像源")
 
 suspend fun download(url: String, file: File): Int = runInterruptible {
     val steam = URL(url).openStream()
@@ -43,7 +44,8 @@ onEnable {
         if (enableUpdate) {
             if (!onlyInNight || LocalDateTime.now().hour in 1..6)
                 try {
-                    val txt = URL("https://api.github.com/repos/$source/releases").readText()
+                    val txt =
+                        URL("https://api.github.com/repos/$source/releases".let { if (useMirror) "$mirror/$it" else it }).readText()
                     val json = Jval.read(txt).asArray().first()
                     val newBuild = json.getString("tag_name", "")
                     val (version, revision) = ("$newBuild.0").removePrefix("v")
@@ -54,7 +56,7 @@ onEnable {
                         } ?: error("New version $newBuild, but can't find asset")
                         val url = asset.getString("browser_download_url", "")
                         try {
-                            update(newBuild, if (useMirror) "https://gh.tinylake.tk/$url" else url)
+                            update(newBuild, url.let { if (useMirror) "$mirror/$it" else it })
                             cancel()
                         } catch (e: Throwable) {
                             logger.warning("下载更新失败: $e")
