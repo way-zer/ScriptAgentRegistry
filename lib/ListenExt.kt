@@ -17,11 +17,22 @@ import coreMindustry.lib.Listener.Companion.listener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-sealed class Listener<T : Any> : Cons<T> {
-    abstract val script: Script?
-    abstract val handler: (T) -> Unit
-    abstract fun register()
-    abstract fun unregister()
+open class Listener<T : Any>(
+    val script: Script?,
+    private val key: Any,
+    val insert: Boolean = false,
+    val handler: (T) -> Unit
+) : Cons<T> {
+    fun register() {
+        map.get(key) { Seq(Cons::class.java) }.let {
+            if (insert) it.insert(0, this) else it.add(this)
+        }
+    }
+
+    fun unregister() {
+        map[key]?.remove(this)
+    }
+
     override fun get(p0: T) {
         try {
             if (script?.enabled != false) handler(p0)
@@ -30,33 +41,12 @@ sealed class Listener<T : Any> : Cons<T> {
         }
     }
 
-    data class OnClass<T : Any>(
-        override val script: Script?,
-        val cls: Class<T>,
-        override val handler: (T) -> Unit
-    ) : Listener<T>() {
-        override fun register() {
-            Events.on(cls, this)
-        }
-
-        override fun unregister() {
-            map[cls]?.remove(this)
-        }
-    }
-
-    data class OnTrigger<T : Any>(
-        override val script: Script?,
-        val v: T,
-        override val handler: (T) -> Unit
-    ) : Listener<T>() {
-        override fun register() {
-            map.get(v) { Seq(Cons::class.java) }.add(this)
-        }
-
-        override fun unregister() {
-            map[v]?.remove(this)
-        }
-    }
+    @Deprecated("removed", level = DeprecationLevel.HIDDEN)
+    class OnClass<T : Any>(
+        script: Script?,
+        cls: Class<T>,
+        handler: (T) -> Unit
+    ) : Listener<T>(script, cls, handler = handler)
 
     companion object {
         private val key = DSLBuilder.DataKeyWithDefault("listener") { mutableListOf<Listener<*>>() }
@@ -86,12 +76,19 @@ sealed class Listener<T : Any> : Cons<T> {
     }
 }
 
+@Deprecated("hidden", level = DeprecationLevel.HIDDEN)
 @ScriptDsl
-inline fun <reified T : Any> Script.listen(noinline handler: (T) -> Unit) {
-    listener.add(Listener.OnClass(this, T::class.java, handler))
+fun <T : Any> Script.listen(v: T, handler: (T) -> Unit) {
+    listener.add(Listener(this, v, handler = handler))
 }
 
 @ScriptDsl
-fun <T : Any> Script.listen(v: T, handler: (T) -> Unit) {
-    listener.add(Listener.OnTrigger(this, v, handler))
+inline fun <reified T : Any> Script.listen(insert: Boolean = false, noinline handler: (T) -> Unit) {
+    listener.add(Listener(this, T::class.java, insert, handler))
+}
+
+
+@ScriptDsl
+fun <T : Any> Script.listen(v: T, insert: Boolean = false, handler: (T) -> Unit) {
+    listener.add(Listener(this, v, insert, handler))
 }
