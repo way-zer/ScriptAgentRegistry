@@ -32,7 +32,6 @@ val allTeam: Set<Team>
         }
     }
 
-val offlineSave = mutableMapOf<String, Team>()
 var bannedTeam = emptySet<Team>()
 
 onEnable {
@@ -44,11 +43,14 @@ onEnable {
     updateBannedTeam(true)
 }
 listen<EventType.PlayEvent> { updateBannedTeam(true) }
+
+val savedTeams = mutableMapOf<String, Team>()
 listen<EventType.ResetEvent> {
     bannedTeam = emptySet()
-    offlineSave.clear()
+    savedTeams.clear()
 }
-listen<EventType.PlayerLeave> { offlineSave[it.player.uuid()] = it.player.team() }
+listen<EventType.PlayerLeave> { savedTeams[it.player.uuid()] = it.player.team() }
+
 //custom gameover
 listen<EventType.BlockDestroyEvent> { e ->
     if (state.gameOver || !state.rules.pvp) return@listen
@@ -84,7 +86,7 @@ fun updateBannedTeam(force: Boolean = false) {
 
 fun randomTeam(player: Player, group: Iterable<Player> = Groups.player): Team {
     val allTeam = allTeam
-    val bak = (offlineSave.remove(player.uuid()) ?: player.team().takeUnless { player.dead() })
+    val bak = (savedTeams.remove(player.uuid()) ?: player.team().takeUnless { player.dead() })
         ?.takeIf { it in allTeam }
     val fromEvent = Dispatchers.game.safeBlocking { AssignTeamEvent(player, group, bak).emitAsync() }.team
     if (fromEvent != null) return fromEvent
