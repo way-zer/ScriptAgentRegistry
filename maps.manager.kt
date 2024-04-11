@@ -2,7 +2,6 @@
 
 package wayzer
 
-import arc.Events
 import arc.files.Fi
 import cf.wayzer.scriptAgent.Event
 import cf.wayzer.scriptAgent.contextScript
@@ -18,7 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import mindustry.Vars
 import mindustry.core.GameState
-import mindustry.game.EventType
 import mindustry.game.Rules
 import mindustry.gen.Call
 import mindustry.gen.Groups
@@ -26,11 +24,8 @@ import mindustry.io.MapIO
 import mindustry.io.SaveIO
 import java.util.logging.Level
 
-/**
- * @param isSave when true, only "info.map.file" is valid
- */
-class MapChangeEvent(val info: MapInfo, val isSave: Boolean, val rules: Rules) : Event,
-    Event.Cancellable {
+class MapChangeEvent(val info: MapInfo, @get:Deprecated("useless, to remove") val isSave: Boolean, val rules: Rules) :
+    Event, Event.Cancellable {
     /** Should call other load*/
     override var cancelled: Boolean = false
 
@@ -82,7 +77,7 @@ object MapManager {
             // EventType.WorldLoadBeginEvent : do set state.rules
             // EventType.WorldLoadEndEvent
             // EventType.WorldLoadEvent
-            // EventType.SaveLoadEvent
+            // Not generator: EventType.SaveLoadEvent
         } catch (e: Throwable) {
             tmpRules = null
             broadcast(
@@ -99,11 +94,9 @@ object MapManager {
 
         if (isSave) {
             Vars.state.set(GameState.State.playing)
-            Events.fire(EventType.PlayEvent())
         } else {
-            Vars.logic.play()
+            Vars.logic.play() // EventType.PlayEvent
         }
-        // EventType.PlayEvent
 
         players.forEach {
             if (it.con == null) return@forEach
