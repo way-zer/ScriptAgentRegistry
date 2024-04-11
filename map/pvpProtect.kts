@@ -14,7 +14,8 @@ val Unit.inEnemyArea: Boolean
         val closestCore = state.teams.active
             .mapNotNull { it.cores.minByOrNull(this::dst2) }
             .minByOrNull(this::dst2) ?: return false
-        return closestCore.team != team() && (state.rules.polygonCoreProtection || dst(closestCore) < state.rules.enemyCoreBuildRadius)
+        return closestCore.team != team() && (state.rules.polygonCoreProtection ||
+                dst(closestCore) < state.rules.enemyCoreBuildRadius)
     }
 
 listen<EventType.PlayEvent> {
@@ -26,12 +27,19 @@ listen<EventType.PlayEvent> {
             Groups.unit.forEach {
                 if (it.inEnemyArea) {
                     it.player?.sendMessage("[red]PVP保护时间,禁止进入敌方区域".with())
-                    it.kill()
+                    it.closestCore()?.let(it::set)
+                    it.snapInterpolation()
+                    it.resetController()
+                    if (leftTime > 60)
+                        it.apply(StatusEffects.unmoving, (leftTime - 60) * 60f)
+//                    it.kill()
                 }
             }
         }
         broadcast(
-            "[yellow]PVP保护时间,禁止在其他基地攻击(持续{time:分钟})".with("time" to Duration.ofSeconds(leftTime.toLong())),
+            "[yellow]PVP保护时间,禁止在其他基地攻击(持续{time:分钟})".with(
+                "time" to Duration.ofSeconds(leftTime.toLong())
+            ),
             quite = true
         )
         repeat(leftTime / 60) {
