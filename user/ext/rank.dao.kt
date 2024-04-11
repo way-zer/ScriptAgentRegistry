@@ -1,5 +1,6 @@
 package wayzer.user.ext
 
+import coreLibrary.DBApi
 import mindustry.gen.Player
 import org.intellij.lang.annotations.Language
 import org.jetbrains.exposed.dao.id.EntityID
@@ -11,11 +12,12 @@ import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.statements.Statement
 import org.jetbrains.exposed.sql.statements.StatementType
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import wayzer.lib.dao.PlayerData
 import wayzer.lib.dao.PlayerProfile
 import java.time.LocalDate
 
-object RankData : IdTable<Int>("RankData") {
+object RankData : IdTable<Int>("RankData"),DBApi.DB.WithUpgrade {
     class CurrentWeek : Function<LocalDate>(JavaLocalDateColumnType()) {
         override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
             +"current_week()"
@@ -33,8 +35,14 @@ object RankData : IdTable<Int>("RankData") {
         registerColumn<Int>(it.name + "Week", it.columnType).default(0)
     }
 
-    override fun createStatement(): List<String> {
-        return mutableListOf(utilFunction) + super.createStatement() + triggerStatement + weekTrigger()
+    override val version: Int get() = 1
+    override fun onUpgrade(oldVersion: Int) {
+        if(oldVersion<1){
+            TransactionManager.current().exec(utilFunction)
+            SchemaUtils.createMissingTablesAndColumns(this)
+            TransactionManager.current().exec(triggerStatement)
+            TransactionManager.current().exec(weekTrigger())
+        }
     }
 
     @Language("PostgreSQL")
