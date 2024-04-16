@@ -54,7 +54,7 @@ fun Script.loadMapScript(id: String, reply: (PlaceHoldString) -> Unit = { delayB
         ScriptManager.enableScript(script, true)
     }
     if (script.enabled)
-        reply("[yellow]加载地图特定脚本完成: {id}".with("id" to script.id))
+        reply("[yellow]加载地图脚本完成: {id}".with("id" to script.id))
     else
         reply(
             "[red]地图脚本{id}加载失败，请联系管理员: {reason}"

@@ -18,6 +18,7 @@ object TagSupport {
 
 fun Script.registerMapTag(name: String) {
     TagSupport.knownTags[name] = id
+    onUnload { TagSupport.knownTags.remove(name) }
 }
 
 fun Script.mapTag(name: String): ReadOnlyProperty<Any?, String> {
