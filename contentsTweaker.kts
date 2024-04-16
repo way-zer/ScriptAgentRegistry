@@ -5,6 +5,7 @@ package coreMindustry
 
 import cf.wayzer.contentsTweaker.ContentsTweaker
 import cf.wayzer.placehold.DynamicVar
+import mindustry.gen.Iconc
 
 var patches: String?
     get() = state.map.tags.get("ContentsPatch")
@@ -19,10 +20,25 @@ var patchList: List<String>
         patches = v.joinToString(";")
     }
 
+val ctPlayers = mutableMapOf<String, String>()
+
+class CTHello(val player: Player, val version: String) : Event {
+    companion object : Event.Handler()
+}
 
 registerVar("scoreBroad.ext.contentsVersion", "ContentsTweaker状态显示", DynamicVar.v {
-    "[violet]特殊修改已加载: [orange](使用[sky]ContentsTweaker[]MOD获得最佳体验)".takeIf { patches != null }
+    val patches = patches ?: return@v null
+    val player = getVar("receiver") as Player?
+    buildString {
+        append("[violet]特殊修改已加载: [orange]")
+        if (player == null || player.uuid() !in ctPlayers)
+            append("(使用[sky]ContentsTweaker[]MOD获得最佳体验)")
+        else append("${patches.count { it == ';' } + 1} 修改")
+    }
 })
+registerVarForType<Player>().apply {
+    registerChild("suffix.s3-CT", "CT mod 后缀", DynamicVar.obj { p -> Iconc.wrench.takeIf { p.uuid() in ctPlayers } })
+}
 
 fun sendPatch(name: String, patch: String) {
     Call.clientPacketReliable("ContentsLoader|newPatch", "$name\n$patch")
@@ -47,6 +63,11 @@ fun addPatchOld(name: String, patch: String): String {
 export(::addPatch)
 listen<EventType.ResetEvent> {
     ContentsTweaker.recoverAll()
+    ctPlayers.clear()
+}
+
+listen<EventType.PlayerLeave> {
+    ctPlayers.remove(it.player.uuid())
 }
 
 listen<EventType.WorldLoadBeginEvent> {
@@ -67,6 +88,10 @@ onEnable {
         logger.info("${p.name} $msg")
         if (msg.contains("2."))
             Call.sendMessage(p.con, "你当前安装的CT版本过老，请更新到3.0.1", null, null)
+        ctPlayers[p.uuid()] = msg
+        launch(Dispatchers.game) {
+            CTHello(p, msg).emitAsync()
+        }
     }
     netServer.addPacketHandler("ContentsLoader|requestPatch") { p, msg ->
         state.map.tags["CT@$msg"]?.let { sendPatch(msg, it) }
