@@ -90,6 +90,7 @@ onEnable {
             protocol = qqProtocol
             parentCoroutineContext = coroutineContext
             loginSolver = StandardCharImageLoginSolver({ channel.receive() })
+            enableContactCache()
         }
     }
     launch { bot.login() }
