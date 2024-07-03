@@ -63,7 +63,11 @@ fun checkNextWave() {
     val flySpawn = spawner.countFlyerSpawns()
     val groundSpawn = spawner.countGroundSpawns()
     val sum = state.rules.spawns.sum {
-        it.getSpawned(state.wave) * if (it.type.flying) flySpawn else groundSpawn
+        it.getSpawned(state.wave) * when {
+            it.spawn != -1 -> 1
+            it.type.flying -> flySpawn
+            else -> groundSpawn
+        }
     }
     if (sum >= 3000) {
         state.rules.spawns.clear()

@@ -16,6 +16,7 @@ val fireCount get() = fireMap.size
 var done = false
 listen<EventType.ResetEvent> { done = false }
 
+onEnable { fireMap }
 
 listen(EventType.Trigger.update) {
     if (state.rules.fire && fireCount > limit) {

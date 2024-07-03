@@ -42,11 +42,6 @@ data class StatisticsData(
     }
 }
 
-val Block.buildScore: Float
-    get() {
-        //如果有更好的建筑积分规则，请修改此处
-        return buildCost / 60f //建筑时间(单位秒)
-    }
 val Player.active
     get() = depends("wayzer/user/ext/activeCheck")
         ?.import<(Player) -> Int>("inactiveTime")
