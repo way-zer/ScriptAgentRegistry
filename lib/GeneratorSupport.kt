@@ -28,32 +28,41 @@ import kotlin.contracts.contract
 import kotlin.system.measureTimeMillis
 
 object GeneratorSupport {
-    private val knownMaps = mutableMapOf<Int, Pair<MapInfo, Set<String>>>()
+    val knownMaps = mutableMapOf<Int, Pair<MapInfo, Set<String>>>()
+
+    object Provider : MapProvider() {
+        override suspend fun searchMaps(search: String?) = knownMaps.values
+            .filter { search == null || search in it.second }
+            .map { it.first }
+
+        override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
+            return knownMaps[id]?.first
+        }
+
+        override fun loadMap(info: MapInfo) {
+            val scriptId = "mapScript/${info.id}"
+            val script = findAndLoadScript(scriptId)?.inst ?: return MapManager.loadMap()
+            try {
+                Vars.world.loadGenerator(info.map.width, info.map.height) { tiles ->
+                    script.genRound.forEach { (name, round) ->
+                        val time = measureTimeMillis { round(tiles) }
+                        script.logger.info("Do $name costs $time ms.")
+                    }
+                }
+            } catch (e: Throwable) {
+                script.logger.log(Level.SEVERE, "loadGenerator出错", e)
+                MapManager.loadMap()
+            }
+        }
+    }
 
     fun checkScript(script: Script) {
         val id = script.id.removePrefix("mapScript/").toIntOrNull() ?: return
         knownMaps.remove(id)
 
         val map = script.mapInfo ?: return
-        val info = MapInfo(id, map, script.mapMode, load = { loadMap(script.id) })
+        val info = MapInfo(Provider, id, map, script.mapMode)
         knownMaps[id] = info to script.mapFilters
-    }
-
-    fun loadMap(scriptId: String) {
-        Vars.logic.reset()
-        val script = findAndLoadScript(scriptId)?.inst ?: return MapManager.loadMap()
-        val map = script.mapInfo ?: return MapManager.loadMap()
-        try {
-            Vars.world.loadGenerator(map.width, map.height) { tiles ->
-                script.genRound.forEach { (name, round) ->
-                    val time = measureTimeMillis { round(tiles) }
-                    script.logger.info("Do $name costs $time ms.")
-                }
-            }
-        } catch (e: Throwable) {
-            script.logger.log(Level.SEVERE, "loadGenerator出错", e)
-            MapManager.loadMap()
-        }
     }
 
     private fun Script.init() {
@@ -67,15 +76,7 @@ object GeneratorSupport {
             ScriptRegistry.allScripts { it.scriptState.loaded && it.id.startsWith(moduleId) }
                 .forEach { it.inst?.let(GeneratorSupport::checkScript) }
         }
-        MapRegistry.register(this, object : MapProvider() {
-            override suspend fun searchMaps(search: String?) = knownMaps.values
-                .filter { search == null || search in it.second }
-                .map { it.first }
-
-            override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
-                return knownMaps[id]?.first
-            }
-        })
+        MapRegistry.register(this, Provider)
     }
 
     init {
