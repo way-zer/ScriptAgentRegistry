@@ -16,10 +16,10 @@ listenTo<MapChangeEvent>(Event.Priority.Before) {
     if (oldBanUnit.isNotEmpty()) rules.bannedUnits.addAll(*oldBanUnit.toTypedArray())
     val time = info.map.tag("saved")?.toLongOrNull()?.let { Instant.ofEpochMilli(it) } ?: return@listenTo
 
-    if (time < Calendar.getInstance().apply { set(2020, 3 - 1, 3) }.toInstant()) {
-        return@listenTo //too old, may no pvp protect
-    }
-    if (time < Calendar.getInstance().apply { set(2022, 3 - 1, 3) }.toInstant()) {
-        rules.tags.put("@banTeam", "2")
+    if (!rules.tags.containsKey("@banTeam") &&
+        Calendar.getInstance().apply { set(2020, 3 - 1, 3) }.toInstant() < time &&//too old, may no pvp protect
+        time < Calendar.getInstance().apply { set(2022, 3 - 1, 3) }.toInstant()
+    ) {
+        modifyRule { tags.put("@banTeam", "2") }
     }
 }

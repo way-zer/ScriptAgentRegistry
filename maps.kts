@@ -1,6 +1,7 @@
 package wayzer
 
 import arc.Events
+import arc.struct.StringMap
 import cf.wayzer.placehold.DynamicVar
 import mindustry.game.EventType.WorldLoadBeginEvent
 import mindustry.game.Gamemode
@@ -17,11 +18,11 @@ val nextSameMode by config.key(false, "自动换图是否选择相同模式地�
 MapRegistry.register(this, object : MapProvider() {
     override suspend fun searchMaps(search: String?): Collection<MapInfo> {
         if (search == "@internal") return maps.defaultMaps()
-            .mapIndexed { i, map -> MapInfo(i + 1, map, Gamemode.survival) }
+            .mapIndexed { i, map -> MapInfo(this, i + 1, map, Gamemode.survival) }
         maps.reload()
         val mapList = (if (configEnableInternMaps) maps.all() else maps.customMaps())
             .sortedBy { it.file.lastModified() }
-            .mapIndexed { i, map -> MapInfo(i + 1, map, bestMode(map)) }
+            .mapIndexed { i, map -> MapInfo(this, i + 1, map, bestMode(map)) }
         return when {
             search.isNullOrEmpty() -> mapList
             search == "survive" -> mapList.filter { it.mode == Gamemode.survival }
@@ -46,7 +47,7 @@ MapRegistry.register(this, object : MapProvider() {
     }
 })
 
-registerVarForType<BaseMapInfo>().apply {
+registerVarForType<MapInfo>().apply {
     registerChild("id", "在/maps中的id", DynamicVar.obj { it.id.toString().padStart(3, '0') })
     registerChild("mode", "地图设定模式", DynamicVar.obj { it.mode.name })
     registerChild("map", "Type@Map", DynamicVar.obj { it.map })
@@ -54,11 +55,11 @@ registerVarForType<BaseMapInfo>().apply {
 
 registerVarForType<MdtMap>().apply {
     registerChild("id", "在/maps中的id(仅支持当前地图)", DynamicVar.obj {
-        if (it == MapManager.current.map) MapManager.current.id
+        if (it === state.map) MapManager.current.id
         else -1
     })
     registerChild("mode", "地图设定模式(仅支持当前地图)", DynamicVar.obj {
-        if (it == MapManager.current.map) MapManager.current.mode.name
+        if (it === state.map) MapManager.current.mode.name
         else "UnSupport"
     })
 }
@@ -117,10 +118,11 @@ listen<EventType.GameOverEvent> { event ->
     }
 }
 listen<WorldLoadBeginEvent>(insert = true) {
-    if (MapManager.tmpRules == null) return@listen
-    state.map = MapManager.current.map
-    state.rules = MapManager.tmpRules
-    MapManager.tmpRules = null
+    state.map = MapManager.current.map.run {
+        mindustry.maps.Map(file, width, height, StringMap(tags), custom, version, build)
+    }
+    MapManager.tmpRulesModifiers.forEach { it(state.rules) }
+    MapManager.tmpRulesModifiers = emptyList()
 }
 command("host", "管理指令: 换图") {
     usage = "[mapId]"

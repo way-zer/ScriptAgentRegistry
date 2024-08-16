@@ -22,46 +22,60 @@ import mindustry.gen.Call
 import mindustry.gen.Groups
 import mindustry.io.MapIO
 import mindustry.io.SaveIO
-import java.util.logging.Level
 
-class MapChangeEvent(val info: MapInfo, @get:Deprecated("useless, to remove") val isSave: Boolean, val rules: Rules) :
+typealias RuleModifier = Rules.() -> Unit
+
+class MapChangeEvent(
+    val info: MapInfo,
+    /** readonly Rules, modify using [modifyRule]*/
+    val rules: Rules
+) :
     Event, Event.Cancellable {
     /** Should call other load*/
     override var cancelled: Boolean = false
+    internal val rulesModifiers = mutableListOf<RuleModifier>()
+    fun modifyRule(block: RuleModifier) {
+        rulesModifiers.add(block)
+        rules.block()
+    }
 
     companion object : Event.Handler()
 }
 
 object MapManager {
-    var current: MapInfo = MapInfo(Vars.state.rules.idInTag, Vars.state.map, Vars.state.rules.mode())
+    var current: MapInfo =
+        MapInfo(MapRegistry.SaveProvider, Vars.state.rules.idInTag, Vars.state.map, Vars.state.rules.mode())
         private set
-    internal var tmpRules: Rules? = null
+    internal var tmpRulesModifiers = emptyList<RuleModifier>()
 
-    @JvmOverloads
+    @Deprecated("old", level = DeprecationLevel.HIDDEN)
     fun loadMap(info: MapInfo? = null, isSave: Boolean = false) {
+        loadMap(info)
+    }
+
+    fun loadMap(info: MapInfo? = null) {
         thisContextScript().launch(Dispatchers.game) {
-            loadMapSync(info, isSave)
+            loadMapSync(info)
         }
     }
 
-    suspend fun loadMapSync(info: MapInfo? = null, isSave: Boolean = false) {
+    suspend fun loadMapSync(info: MapInfo? = null) {
         @Suppress("NAME_SHADOWING")
         val info = info ?: MapRegistry.nextMapInfo()
-        val event = MapChangeEvent(info, isSave, info.map.applyRules(info.mode).apply {
+        val event = MapChangeEvent(info, info.map.rules())
+        //base rule modifier
+        event.modifyRule {
+            info.mode.apply(this)
             idInTag = info.id
             Regex("\\[(@[a-zA-Z0-9]+)(=[^=\\]]+)?]").findAll(info.map.description()).forEach {
                 val value = it.groupValues[2].takeIf(String::isNotEmpty) ?: "true"
                 tags.put(it.groupValues[1], value.removePrefix("="))
             }
-        }).emitAsync()
-        if (event.cancelled) return
+        }
+        if (event.emitAsync().cancelled) return
+
         thisContextScript().logger.info("loadMap [${info.id}]${info.map.name()}")
         if (!Vars.net.server()) Vars.netServer.openServer()
-        try {
-            current.beforeReset?.invoke()
-        } catch (e: Throwable) {
-            thisContextScript().logger.log(Level.WARNING, "Error when do reset for $current", e)
-        }
         val players = Groups.player.toList()
         Call.worldDataBegin()
         Vars.logic.reset()
@@ -69,17 +83,16 @@ object MapManager {
         Vars.world.resize(0, 0)
         yield()
 
-
         current = info
         try {
-            tmpRules = event.rules.copy()
-            info.load() // EventType.ResetEvent
+            tmpRulesModifiers = event.rulesModifiers
+            info.provider.loadMap(info) // EventType.ResetEvent
             // EventType.WorldLoadBeginEvent : do set state.rules
             // EventType.WorldLoadEndEvent
             // EventType.WorldLoadEvent
             // Not generator: EventType.SaveLoadEvent
         } catch (e: Throwable) {
-            tmpRules = null
+            tmpRulesModifiers = emptyList()
             broadcast(
                 "[red]地图{info.map.name}无效:{reason}".with(
                     "info" to info,
@@ -92,7 +105,7 @@ object MapManager {
         }
 
 
-        if (isSave) {
+        if (info.provider == MapRegistry.SaveProvider) {
             Vars.state.set(GameState.State.playing)
         } else {
             Vars.logic.play() // EventType.PlayEvent
@@ -112,10 +125,7 @@ object MapManager {
 
     fun loadSave(file: Fi) {
         val map = MapIO.createMap(file, true)
-        val info = MapInfo(map.rules().idInTag, map, map.rules().mode()) {
-            SaveIO.load(file)
-        }
-        loadMap(info, true)
+        loadMap(MapInfo(MapRegistry.SaveProvider, map.rules().idInTag, map, map.rules().mode()))
     }
 
     fun getSlot(id: Int): Fi? {

@@ -9,33 +9,28 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import mindustry.Vars
 import mindustry.game.Gamemode
+import mindustry.io.SaveIO
 import mindustry.maps.Map
 
-/** base mapInfo, not for load */
-open class BaseMapInfo(open val id: Int, open val map: Map, open val mode: Gamemode) {
-    override fun toString(): String {
-        return "BaseMapInfo(id=$id, map=$map, mode=$mode)"
-    }
-
-    final override fun equals(other: Any?): Boolean = other is BaseMapInfo && id == other.id
-    final override fun hashCode(): Int = id
-}
-
 data class MapInfo(
-    override val id: Int, override val map: Map, override val mode: Gamemode,
-    val beforeReset: (() -> Unit)? = null,
-    /**use for generator or save*/
-    val load: (() -> Unit) = { Vars.world.loadMap(map) }
-) : BaseMapInfo(id, map, mode)
+    val provider: MapProvider, val id: Int, val map: Map, val mode: Gamemode
+) {
+    override fun equals(other: Any?): Boolean = other is MapInfo && (provider == other.provider && id == other.id)
+    override fun hashCode(): Int = 31 * provider.hashCode() + id
+}
 
 abstract class MapProvider {
-    abstract suspend fun searchMaps(search: String? = null): Collection<BaseMapInfo>
+    abstract suspend fun searchMaps(search: String? = null): Collection<MapInfo>
     /**@param id may not exist in getMaps*/
     open suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)? = null): MapInfo? =
-        searchMaps().filterIsInstance<MapInfo>().find { it.id == id }
+        searchMaps().find { it.id == id }
+
+    open fun loadMap(map: MapInfo) {
+        Vars.world.loadMap(map.map)
+    }
 }
 
-class GetNextMapEvent(val previous: BaseMapInfo?, var mapInfo: BaseMapInfo) : Event, Event.Cancellable {
+class GetNextMapEvent(val previous: MapInfo?, var mapInfo: MapInfo) : Event, Event.Cancellable {
     override var cancelled: Boolean = false
     override val handler: Event.Handler get() = Companion
 
@@ -51,7 +46,7 @@ object MapRegistry : MapProvider() {
         providers.add(provider)
     }
 
-    override suspend fun searchMaps(search: String?): List<BaseMapInfo> {
+    override suspend fun searchMaps(search: String?): List<MapInfo> {
         @Suppress("NAME_SHADOWING")
         val search = search.takeUnless { it == "all" || it == "display" }
         return coroutineScope {
@@ -62,26 +57,27 @@ object MapRegistry : MapProvider() {
 
     /**Dispatch should be Dispatchers.game*/
     override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
-        return providers.firstNotNullOf { it.findById(id, reply) }
+        return providers.firstNotNullOfOrNull { it.findById(id, reply) }
     }
 
     suspend fun nextMapInfo(
-        previous: BaseMapInfo? = null,
-        mode: Gamemode = Gamemode.survival,
-        filter: String = "survive"
+        previous: MapInfo? = null,
+        mode: Gamemode = Gamemode.survival
     ): MapInfo {
-        val maps = searchMaps(filter).let { maps ->
+        val maps = searchMaps().let { maps ->
             if (maps.isNotEmpty()) return@let maps
             Log.warn("服务器未安装地图,自动使用内置地图")
-            Vars.maps.defaultMaps()
-                .mapIndexed { i, map -> MapInfo(i + 1, map, Gamemode.survival) }
+            searchMaps("@internal")
         }
         val next = maps.filter { it.mode == mode && it != previous }.randomOrNull() ?: maps.random()
-        val info = GetNextMapEvent(previous, next).emitAsync().mapInfo
-        if (info is MapInfo) return info
-        return findById(info.id) ?: let {
-            Log.err("Get search result ${info}, but can't find MapInfo implementation.")
-            nextMapInfo(previous, mode, filter)
+        return GetNextMapEvent(previous, next).emitAsync().mapInfo
+    }
+
+    //not need register
+    object SaveProvider : MapProvider() {
+        override suspend fun searchMaps(search: String?): Collection<MapInfo> = emptyList()
+        override fun loadMap(map: MapInfo) {
+            SaveIO.load(map.map.file)
         }
     }
 }
