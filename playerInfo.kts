@@ -3,7 +3,6 @@ package wayzer
 import arc.util.Strings
 import cf.wayzer.placehold.DynamicVar
 import coreLibrary.DBApi
-import coreLibrary.lib.util.loop
 import mindustry.net.Administration
 import mindustry.net.Packets
 import mindustry.net.Packets.ConnectPacket
@@ -54,12 +53,20 @@ fun Player.updateName() {
 }
 
 listenPacket2ServerAsync<ConnectPacket> { con, packet ->
+    if (con.address.startsWith("steam:")) {
+        packet.uuid = con.address.substring("steam:".length)
+    }
+
     if (Groups.player.any { pp -> pp.uuid() == packet.uuid }) {
         con.kick(Packets.KickReason.idInUse)
         return@listenPacket2ServerAsync false
     }
     if (Strings.stripColors(packet.name).length > 24) {
         con.kick("Name is too long")
+        return@listenPacket2ServerAsync false
+    }
+    if (packet.usid.length > 12) {
+        con.kick("Bad usid")
         return@listenPacket2ServerAsync false
     }
     val old = transaction { PlayerData.findById(packet.uuid) }
@@ -111,20 +118,16 @@ onEnable {
         loop(Dispatchers.IO) {
             delay(5000)
             val online = Groups.player.mapNotNull { PlayerData[it.uuid()].secureProfile(it) }.toSet()
-            runCatching {
-                transaction {
-                    online.forEach {
-                        it.loopCheck()
-                        it.totalTime += 5
-                    }
+            transaction {
+                online.forEach {
+                    it.loopCheck()
+                    it.totalTime += 5
                 }
-            }//Some time ConcurrentModificationException
+            }
         }
         loop(Dispatchers.game) {
             delay(5000)
-            runCatching {
-                Groups.player.forEach { it.updateName() }
-            }//Some time ConcurrentModificationException
+            Groups.player.forEach { it.updateName() }
         }
     }
 }
