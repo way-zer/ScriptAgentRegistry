@@ -5,7 +5,6 @@ package coreLibrary.lib
 import cf.wayzer.scriptAgent.emitAsync
 import coreLibrary.lib.PermissionApi.*
 import coreLibrary.lib.event.RequestPermissionEvent
-import java.util.*
 
 /**
  * 权限系统Api
@@ -42,9 +41,7 @@ interface PermissionApi {
      */
     companion object Global : PermissionHandler<List<String>> {
         val default = StringPermissionHandler()
-        val handlers = LinkedList<PermissionHandler<String>>().apply {
-            addLast(default)
-        }
+        val handlers = mutableListOf<PermissionHandler<String>>(default)
         val allKnownGroup: Set<String> get() = handlers.flatMapTo(mutableSetOf()) { it.allKnownSubject }
 
         fun handleGroup(group: String, permission: String): Result {
