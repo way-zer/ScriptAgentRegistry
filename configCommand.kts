@@ -51,10 +51,11 @@ onEnable {
                         |[yellow]==== [light_yellow]配置项: {name}[yellow] ====
                         |[purple]{desc:${"\n"}}
                         |[cyan]当前值: [yellow]{value}
+                        |[cyan]默认值: [yellow]{default}
                         |[yellow]使用/sa config help查看可用操作
                     """.trimMargin().with(
                                 "name" to config.path, "desc" to config.desc,
-                                "value" to config.getString()
+                                "value" to config.getString(), "default" to config.default,
                             )
                         )
                     }

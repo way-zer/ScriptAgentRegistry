@@ -1,9 +1,7 @@
 package coreLibrary
 
-import coreLibrary.lib.event.RequestPermissionEvent
-
 val handler = PermissionApi.StringPermissionHandler()
-onEnable { PermissionApi.handlers.addFirst(handler) }
+onEnable { PermissionApi.handlers.add(0, handler) }
 onDisable { PermissionApi.handlers.remove(handler) }
 
 var groups by config.key(
