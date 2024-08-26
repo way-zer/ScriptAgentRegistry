@@ -2,7 +2,6 @@
 
 package coreLibrary.extApi
 
-import coreLibrary.lib.util.ServiceRegistry
 import redis.clients.jedis.Jedis
 import redis.clients.jedis.JedisPool
 import java.util.logging.Level
@@ -18,7 +17,8 @@ val addr by config.key("redis://redis:6379", "redis地址", "重载生效")
 onEnable {
     try {
         Redis.provide(this, JedisPool(addr).apply {
-            resource.use { it.ping() }
+            testOnCreate = true
+            testOnBorrow = true
         })
     } catch (e: Throwable) {
         logger.log(Level.WARNING, "连接Redis服务器失败: $addr", e)
