@@ -155,6 +155,8 @@ class PlayerData(id: EntityID<String>) : Entity<String>(id) {
             cache.put(id, v)
         }
 
+        val cached: Collection<PlayerData> get() = realCache.values
+
         @NeedTransaction
         fun findOrCreate(uuid: String, address: String, name: String) =
             findByIdWithTransaction(uuid)

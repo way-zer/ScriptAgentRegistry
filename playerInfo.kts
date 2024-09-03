@@ -65,22 +65,21 @@ listenPacket2ServerAsync<ConnectPacket> { con, packet ->
         con.kick("Name is too long")
         return@listenPacket2ServerAsync false
     }
-    if (packet.usid.length > 12) {
-        con.kick("Bad usid")
+    if (!Regex("[^\\x00-\\x1f]*").matches(packet.name) || !Regex("[a-zA-z0-9+/=]{12}").matches(packet.usid)) {
+        con.kick("Who are you?")
         return@listenPacket2ServerAsync false
     }
     val old = transaction { PlayerData.findById(packet.uuid) }
     val event = ConnectAsyncEvent(con, packet, old).apply {
         emitAsync {
-            data =
-                withContext(Dispatchers.IO) {
-                    transaction {
-                        PlayerData.findOrCreate(packet.uuid, con.address, packet.name).apply {
-                            refresh(flush = true)
-                            profile//warm up cache
-                        }
+            data = withContext(Dispatchers.IO) {
+                transaction {
+                    PlayerData.findOrCreate(packet.uuid, con.address, packet.name).apply {
+                        refresh(flush = true)
+                        profile//warm up cache
                     }
                 }
+            }
         }
     }
     if (event.cancelled && !con.kicked)
