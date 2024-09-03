@@ -31,10 +31,10 @@ val webRoot by config.key("https://api.mindustry.top", "Mindustry资源站Api")
 
 val tokenOk get() = token.isNotBlank()
 
-var MdtMap.resourceId: String?
-    get() = tags.get("resourceId")
+var MdtMap.resourceHash: String?
+    get() = tags.get("resourceHash")
     set(v) {
-        tags.put("resourceId", v)
+        tags.put("resourceHash", v)
     }
 
 fun JsonValue.toStringMap() = StringMap().apply {
@@ -67,7 +67,7 @@ MapRegistry.register(this, object : MapProvider() {
 
     fun newMapInfo(id: Int, hash: String, tags: StringMap, mode: String): MapInfo {
         val map = Map(customMapDirectory.child("unknown"), tags.getInt("width"), tags.getInt("height"), tags, true)
-            .apply { resourceId = hash }
+            .apply { resourceHash = hash }
         val mode2 = Gamemode.all.find { it.name.equals(mode, ignoreCase = true) }
             ?: if (mode.equals("unknown", true)) map.rules().mode() else Gamemode.survival
         return MapInfo(this, id, map, mode2)
@@ -118,8 +118,8 @@ MapRegistry.register(this, object : MapProvider() {
     }
 
     override fun loadMap(map: MapInfo) {
-        val hash = map.map.resourceId ?: return MapManager.loadMap()
-        val bs = runBlocking { httpGet("$webRoot/maps/$hash/downloadServer?token=$token", retry = 3) }
+        val hash = map.map.resourceHash ?: return MapManager.loadMap()
+        val bs = runBlocking { httpGet("$webRoot/maps/$hash.msav", retry = 3) }
         @Suppress("INACCESSIBLE_TYPE")
         SaveIO.load(InflaterInputStream(ByteArrayInputStream(bs)), world.filterContext(map.map))
     }
