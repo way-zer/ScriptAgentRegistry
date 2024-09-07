@@ -1,8 +1,8 @@
 package wayzer.map
 
-import coreLibrary.lib.util.loop
+import arc.math.geom.Geometry
+import arc.math.geom.Point2
 import mindustry.game.Gamemode
-import mindustry.gen.Groups
 import mindustry.gen.Unit
 import java.time.Duration
 import kotlin.math.ceil
@@ -19,23 +19,32 @@ val Unit.inEnemyArea: Boolean
     }
 
 listen<EventType.WorldLoadEvent> {
-    launch {
-        var leftTime = state.rules.tags.getInt("@pvpProtect", time)
-        if (state.rules.mode() != Gamemode.pvp || time <= 0) return@launch
-        loop(Dispatchers.game) {
-            delay(1000)
-            Groups.unit.forEach {
-                if (it.inEnemyArea) {
-                    it.player?.sendMessage("[red]PVP保护时间,禁止进入敌方区域".with())
-                    it.closestCore()?.let(it::set)
+    var leftTime = state.rules.tags.getInt("@pvpProtect", time)
+    if (state.rules.mode() != Gamemode.pvp || time <= 0) return@listen
+    loop(Dispatchers.game) {
+        delay(1000)
+        Groups.unit.forEach {
+            if (it.inEnemyArea) {
+                it.player?.sendMessage("[red]PVP保护时间,禁止进入敌方区域".with())
+                it.closestCore()?.run {
+                    val valid = mutableListOf<Point2>()
+                    Geometry.circle(tileX(), tileY(), world.width(), world.height(), 10) { x, y ->
+                        if (it.canPass(x, y) && (!it.canDrown() || floorOn()?.isDeep == false))
+                            valid.add(Point2(x, y))
+                    }
+                    val r = valid.randomOrNull() ?: return@run
+                    it.x = r.x * tilesize.toFloat()
+                    it.y = r.y * tilesize.toFloat()
                     it.snapInterpolation()
-                    it.resetController()
-                    if (leftTime > 60)
-                        it.apply(StatusEffects.unmoving, (leftTime - 60) * 60f)
-//                    it.kill()
                 }
+                it.resetController()
+                if (leftTime > 60)
+                    it.apply(StatusEffects.unmoving, (leftTime - 60) * 60f)
+//                    it.kill()
             }
         }
+    }
+    launch(Dispatchers.game) {
         broadcast(
             "[yellow]PVP保护时间,禁止在其他基地攻击(持续{time:分钟})".with(
                 "time" to Duration.ofSeconds(leftTime.toLong())
@@ -49,10 +58,10 @@ listen<EventType.WorldLoadEvent> {
         }
         delay(leftTime * 1000L)
         broadcast("[yellow]PVP保护时间已结束, 全力进攻吧".with())
-        cancel()
+        thisScript.coroutineContext.cancelChildren()
     }
 }
 
 listen<EventType.ResetEvent> {
-    coroutineContext[Job]?.cancelChildren()
+    coroutineContext.cancelChildren()
 }
