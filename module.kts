@@ -47,9 +47,11 @@ listen<EventType.WorldLoadEvent> {
     val scriptId = ScriptManager.getScriptNullable("$moduleId/${MapManager.current.id}")?.id
         ?: state.rules.tags.get("@mapScript")
             ?.run { "$moduleId/${toIntOrNull() ?: MapManager.current.id}" }
-    if (scriptId != null)
-        loadMapScript(scriptId)
-    TagSupport.findTags(state.rules).values.toSet().forEach(::loadMapScript)
+    MindustryDispatcher.safeBlocking {
+        if (scriptId != null)
+            loadMapScript(scriptId)
+        TagSupport.findTags(state.rules).values.toSet().forEach { loadMapScript(it) }
+    }
 }
 
 //阻止其他脚本启用

@@ -23,13 +23,11 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 //find and ensure loaded
-internal fun findAndLoadScript(id: String): ScriptInfo? {
+internal suspend fun findAndLoadScript(id: String): ScriptInfo? {
     val script = ScriptRegistry.findScriptInfo(id) ?: return null
-    MindustryDispatcher.safeBlocking {
-        ScriptManager.transaction {
-            add(script)
-            load()
-        }
+    ScriptManager.transaction {
+        add(script)
+        load()
     }
     return script.takeIf { it.inst != null }
 }
@@ -40,7 +38,7 @@ fun Script.delayBroadcast(msg: PlaceHoldString) = launch(Dispatchers.gamePost) {
 }
 
 /** 为onEnable中使用，加载其他MapScript脚本 */
-fun Script.loadMapScript(id: String, reply: (PlaceHoldString) -> Unit = { delayBroadcast(it) }): Boolean {
+suspend fun Script.loadMapScript(id: String, reply: (PlaceHoldString) -> Unit = { delayBroadcast(it) }): Boolean {
     val script = findAndLoadScript(id)?.scriptInfo
     if (script == null) {
         reply("[red]该服务器不存在对应地图脚本，请联系管理员: {id}".with("id" to id))

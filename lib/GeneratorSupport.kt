@@ -39,11 +39,12 @@ object GeneratorSupport {
             return knownMaps[id]?.first
         }
 
-        override fun loadMap(info: MapInfo) {
+        override suspend fun loadMap(info: MapInfo) {
             val scriptId = "mapScript/${info.id}"
             val script = findAndLoadScript(scriptId)?.inst ?: return MapManager.loadMap()
+            val map = script.mapInfo ?: return MapManager.loadMap()
             try {
-                Vars.world.loadGenerator(info.map.width, info.map.height) { tiles ->
+                Vars.world.loadGenerator(map.width, map.height) { tiles ->
                     script.genRound.forEach { (name, round) ->
                         val time = measureTimeMillis { round(tiles) }
                         script.logger.info("Do $name costs $time ms.")
@@ -61,7 +62,7 @@ object GeneratorSupport {
         knownMaps.remove(id)
 
         val map = script.mapInfo ?: return
-        val info = MapInfo(Provider, id, map, script.mapMode)
+        val info = MapInfo(Provider, id, script.mapMode, map)
         knownMaps[id] = info to script.mapFilters
     }
 
