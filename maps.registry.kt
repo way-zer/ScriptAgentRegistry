@@ -10,13 +10,30 @@ import kotlinx.coroutines.coroutineScope
 import mindustry.Vars
 import mindustry.game.Gamemode
 import mindustry.io.SaveIO
-import mindustry.maps.Map
+import mindustry.maps.Map as MdtMap
 
 data class MapInfo(
-    val provider: MapProvider, val id: Int, val map: Map, val mode: Gamemode
+    val provider: MapProvider,
+    val id: Int,
+    val mode: Gamemode,
+    var map: MdtMap? = null,
+    val meta: Map<String, String> = emptyMap()
 ) {
+    val name get() = meta["name"] ?: map?.name() ?: "unknown"
+    val author get() = meta["author"] ?: map?.author() ?: "unknown"
+    val description get() = meta["description"] ?: map?.description() ?: "[NULL]"
+
+    suspend fun loadMap(): MdtMap {
+        this.map?.let { return it }
+        this.map = provider.lazyGetMap(this)
+        return this.map!!
+    }
+
     override fun equals(other: Any?): Boolean = other is MapInfo && (provider == other.provider && id == other.id)
     override fun hashCode(): Int = 31 * provider.hashCode() + id
+    override fun toString(): String {
+        return "MapInfo(name='$name', meta=$meta, mode=$mode, id=$id, provider=$provider)"
+    }
 }
 
 abstract class MapProvider {
@@ -25,8 +42,11 @@ abstract class MapProvider {
     open suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)? = null): MapInfo? =
         searchMaps().find { it.id == id }
 
-    open fun loadMap(map: MapInfo) {
-        Vars.world.loadMap(map.map)
+    open suspend fun lazyGetMap(info: MapInfo): MdtMap =
+        throw NotImplementedError("you must implement `lazyGetMap` and provider when init MapInfo")
+
+    open suspend fun loadMap(info: MapInfo) {
+        Vars.world.loadMap(info.loadMap())
     }
 }
 
@@ -76,8 +96,8 @@ object MapRegistry : MapProvider() {
     //not need register
     object SaveProvider : MapProvider() {
         override suspend fun searchMaps(search: String?): Collection<MapInfo> = emptyList()
-        override fun loadMap(map: MapInfo) {
-            SaveIO.load(map.map.file)
+        override suspend fun loadMap(info: MapInfo) {
+            SaveIO.load(info.map!!.file)
         }
     }
 }

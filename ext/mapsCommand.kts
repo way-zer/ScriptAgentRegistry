@@ -16,7 +16,7 @@ command("maps", "列出服务器地图") {
         val page = arg.lastOrNull()?.toIntOrNull() ?: 1
         val filter = arg.getOrNull(0).takeUnless { it == page.toString() }
         val maps = MapRegistry.searchMaps(filter)/*.sortedBy { it.id }*/
-        val template = "[red]{info.id}  [green]{info.map.name}[blue] | {info.mode}"
+        val template = "[red]{info.id}  [green]{info.name}[blue] | {info.mode}"
         val player = player ?: returnReply(menu("服务器地图 By WayZer", maps, page, mapsPrePage) { info ->
             template.with("info" to info)
         })

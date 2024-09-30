@@ -2,27 +2,22 @@
 
 package wayzer.ext
 
-import arc.struct.StringMap
+import arc.files.Fi
 import arc.util.Strings
-import arc.util.serialization.JsonReader
-import arc.util.serialization.JsonValue
-import arc.util.serialization.JsonWriter
+import arc.util.serialization.Jval
 import cf.wayzer.placehold.PlaceHoldApi.with
 import com.google.common.cache.CacheBuilder
 import mindustry.game.Gamemode
-import mindustry.io.SaveIO
-import mindustry.maps.Map
+import mindustry.io.MapIO
 import wayzer.MapInfo
-import wayzer.MapManager
 import wayzer.MapProvider
 import wayzer.MapRegistry
 import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.net.URL
 import java.net.URLEncoder
 import java.time.Duration
 import java.util.logging.Level
-import java.util.zip.InflaterInputStream
-import mindustry.maps.Map as MdtMap
 
 name = "资源站配套脚本"
 
@@ -31,18 +26,12 @@ val webRoot by config.key("https://api.mindustry.top", "Mindustry资源站Api")
 
 val tokenOk get() = token.isNotBlank()
 
-var MdtMap.resourceHash: String?
-    get() = tags.get("resourceHash")
-    set(v) {
-        tags.put("resourceHash", v)
+fun Jval.toStringMap(): Map<String, String> = buildMap {
+    asObject().forEach {
+        if (it.value.isString) {
+            put(it.key, it.value.asString())
+        }
     }
-
-fun JsonValue.toStringMap() = StringMap().apply {
-    var node = child()
-    do {
-        put(node.name, node.toJson(JsonWriter.OutputType.minimal))
-        node = node.next
-    } while (node != null)
 }
 
 suspend fun httpGet(url: String, retry: Int = 3) = withContext(Dispatchers.IO) {
@@ -65,16 +54,9 @@ MapRegistry.register(this, object : MapProvider() {
         .expireAfterWrite(Duration.ofHours(1))
         .build<String, List<MapInfo>>()!!
 
-    fun newMapInfo(id: Int, hash: String, tags: StringMap, mode: String): MapInfo {
-        val map = Map(customMapDirectory.child("unknown"), tags.getInt("width"), tags.getInt("height"), tags, true)
-            .apply { resourceHash = hash }
-        val mode2 = Gamemode.all.find { it.name.equals(mode, ignoreCase = true) }
-            ?: if (mode.equals("unknown", true)) map.rules().mode() else Gamemode.survival
-        return MapInfo(this, id, map, mode2)
-    }
-
     override suspend fun searchMaps(search: String?): Collection<MapInfo> {
         if (!tokenOk) return emptyList()
+        val provider = this
         val mappedSearch = when (search) {
             "all", "display", "site", null -> ""
             "pvp", "attack", "survive" -> "@mode:${Strings.capitalize(search)}"
@@ -85,11 +67,15 @@ MapRegistry.register(this, object : MapProvider() {
             @Suppress("BlockingMethodInNonBlockingContext")
             val maps =
                 httpGet("$webRoot/maps/list?prePage=100&search=${URLEncoder.encode(mappedSearch, "utf-8")}", retry = 1)
-                    .let { JsonReader().parse(it.toString(Charsets.UTF_8)) }
-                    .map {
-                        val id = it.getInt("id")
-                        val hash = it.getString("latest")
-                        newMapInfo(id, hash, it.toStringMap(), it.getString("mode", "unknown"))
+                    .let { Jval.read(it.toString(Charsets.UTF_8)).asArray() }
+                    .asIterable().map { info ->
+                        val id = info.getInt("id", -1)
+                        val mode = info.getString("mode", "unknown")
+                        MapInfo(
+                            provider, id,
+                            Gamemode.all.find { it.name.equals(mode, ignoreCase = true) } ?: Gamemode.survival,
+                            meta = info.toStringMap()
+                        )
                     }
             searchCache.put(mappedSearch, maps)
             return maps
@@ -107,20 +93,27 @@ MapRegistry.register(this, object : MapProvider() {
         }
         try {
             val info = httpGet("$webRoot/maps/thread/$id/latest")
-                .let { JsonReader().parse(it.toString(Charsets.UTF_8)) }
-            val hash = info.getString("hash")
-            val tags = info.get("tags").toStringMap()
-            return newMapInfo(id, hash, tags, info.getString("mode", "unknown"))
+                .let { Jval.read(it.toString(Charsets.UTF_8)) }
+            val mode = info.getString("mode", "unknown")
+            return MapInfo(
+                this, id,
+                Gamemode.all.find { it.name.equals(mode, ignoreCase = true) } ?: Gamemode.survival,
+                meta = info.get("tags").toStringMap() + ("hash" to info.getString("hash")),
+            )
         } catch (e: Exception) {
             logger.log(Level.WARNING, "Fail to findById($id)", e)
             return null
         }
     }
 
-    override fun loadMap(map: MapInfo) {
-        val hash = map.map.resourceHash ?: return MapManager.loadMap()
+    override suspend fun lazyGetMap(info: MapInfo): mindustry.maps.Map {
+        val hash = info.meta["hash"] ?: info.meta["latest"] ?: error("Not set hash or latest")
         val bs = runBlocking { httpGet("$webRoot/maps/$hash.msav", retry = 3) }
-        @Suppress("INACCESSIBLE_TYPE")
-        SaveIO.load(InflaterInputStream(ByteArrayInputStream(bs)), world.filterContext(map.map))
+        val fi = object : Fi("BYTES.msav") {
+            override fun read(): InputStream {
+                return ByteArrayInputStream(bs)
+            }
+        }
+        return MapIO.createMap(fi, true)
     }
 })

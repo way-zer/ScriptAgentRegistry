@@ -16,8 +16,8 @@ fun VoteService.register() {
             returnReply("[red]请输入地图序号".with())
         val map = arg[0].toIntOrNull()?.let { MapRegistry.findById(it, reply) }
             ?: returnReply("[red]地图序号错误,可以通过/maps查询".with())
-        val desc = "[white]地图作者: [lightgrey]${stripColors(map.map.author())}[][]\n" +
-                "[white]地图简介: [lightgrey]${truncate(stripColors(map.map.description()), 100, "...")}[][]"
+        val desc = "[white]地图作者: [lightgrey]${stripColors(map.author)}[][]\n" +
+                "[white]地图简介: [lightgrey]${truncate(stripColors(map.description), 100, "...")}[][]"
         start(
             player!!,
             "换图([green]{nextMap.id}[]: [green]{nextMap.map.name}[yellow]|[green]{nextMap.mode}[])"
@@ -26,12 +26,6 @@ fun VoteService.register() {
             supportSingle = true
         ) {
             broadcast("[yellow]异步加载地图中，请耐心等待".with())
-            if (withContext(Dispatchers.Default) { map.map.file.exists() && !SaveIO.isSaveValid(map.map.file) })
-                return@start broadcast(
-                    "[red]换图失败,地图[yellow]{nextMap.name}[green](id: {nextMap.id})[red]已损坏".with(
-                        "nextMap" to map.map
-                    )
-                )
             MapManager.loadMap(map)
             Core.app.post { // 推后,确保地图成功加载
                 broadcast("[green]换图成功,当前地图[yellow]{map.name}[green](id: {map.id})".with())

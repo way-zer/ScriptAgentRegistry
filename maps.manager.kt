@@ -3,6 +3,7 @@
 package wayzer
 
 import arc.files.Fi
+import arc.struct.StringMap
 import cf.wayzer.scriptAgent.Event
 import cf.wayzer.scriptAgent.contextScript
 import cf.wayzer.scriptAgent.emitAsync
@@ -22,20 +23,20 @@ import mindustry.gen.Call
 import mindustry.gen.Groups
 import mindustry.io.MapIO
 import mindustry.io.SaveIO
+import mindustry.maps.Map
 
 typealias RuleModifier = Rules.() -> Unit
 
 class MapChangeEvent(
     val info: MapInfo,
-    /** readonly Rules, modify using [modifyRule]*/
-    val rules: Rules
+    val map: Map,
+    val rules: Rules = map.applyRules(info.mode),
 ) :
     Event, Event.Cancellable {
     /** Should call other load*/
     override var cancelled: Boolean = false
-    internal val rulesModifiers = mutableListOf<RuleModifier>()
+    @Deprecated("modify rules directly", ReplaceWith("rules.block()"))
     fun modifyRule(block: RuleModifier) {
-        rulesModifiers.add(block)
         rules.block()
     }
 
@@ -44,9 +45,9 @@ class MapChangeEvent(
 
 object MapManager {
     var current: MapInfo =
-        MapInfo(MapRegistry.SaveProvider, Vars.state.rules.idInTag, Vars.state.map, Vars.state.rules.mode())
+        MapInfo(MapRegistry.SaveProvider, Vars.state.rules.idInTag, Vars.state.rules.mode(), Vars.state.map)
         private set
-    internal var tmpRulesModifiers = emptyList<RuleModifier>()
+    internal var tmpVarSet: (() -> Unit)? = null
 
     @Deprecated("old", level = DeprecationLevel.HIDDEN)
     fun loadMap(info: MapInfo? = null, isSave: Boolean = false) {
@@ -62,19 +63,19 @@ object MapManager {
     suspend fun loadMapSync(info: MapInfo? = null) {
         @Suppress("NAME_SHADOWING")
         val info = info ?: MapRegistry.nextMapInfo()
-        val event = MapChangeEvent(info, info.map.rules())
-        //base rule modifier
-        event.modifyRule {
-            info.mode.apply(this)
-            idInTag = info.id
-            Regex("\\[(@[a-zA-Z0-9]+)(=[^=\\]]+)?]").findAll(info.map.description()).forEach {
+        val map = info.loadMap().run {
+            Map(file, width, height, StringMap(tags), custom, version, build) //copy tags
+        }
+        val event = MapChangeEvent(info, map).apply {
+            rules.idInTag = info.id
+            Regex("\\[(@[a-zA-Z0-9]+)(=[^=\\]]+)?]").findAll(map.description()).forEach {
                 val value = it.groupValues[2].takeIf(String::isNotEmpty) ?: "true"
-                tags.put(it.groupValues[1], value.removePrefix("="))
+                rules.tags.put(it.groupValues[1], value.removePrefix("="))
             }
         }
         if (event.emitAsync().cancelled) return
 
-        thisContextScript().logger.info("loadMap [${info.id}]${info.map.name()}")
+        thisContextScript().logger.info("loadMap $info")
         if (!Vars.net.server()) Vars.netServer.openServer()
         val players = Groups.player.toList()
         Call.worldDataBegin()
@@ -85,14 +86,17 @@ object MapManager {
 
         current = info
         try {
-            tmpRulesModifiers = event.rulesModifiers
+            tmpVarSet = {
+                Vars.state.map = map
+                Vars.state.rules = event.rules
+            }
             info.provider.loadMap(info) // EventType.ResetEvent
             // EventType.WorldLoadBeginEvent : do set state.rules
             // EventType.WorldLoadEndEvent
             // EventType.WorldLoadEvent
             // Not generator: EventType.SaveLoadEvent
         } catch (e: Throwable) {
-            tmpRulesModifiers = emptyList()
+            tmpVarSet = null
             broadcast(
                 "[red]地图{info.map.name}无效:{reason}".with(
                     "info" to info,
@@ -125,7 +129,7 @@ object MapManager {
 
     fun loadSave(file: Fi) {
         val map = MapIO.createMap(file, true)
-        loadMap(MapInfo(MapRegistry.SaveProvider, map.rules().idInTag, map, map.rules().mode()))
+        loadMap(MapInfo(MapRegistry.SaveProvider, map.rules().idInTag, map.rules().mode(), map))
     }
 
     fun getSlot(id: Int): Fi? {

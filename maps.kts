@@ -1,7 +1,6 @@
 package wayzer
 
 import arc.Events
-import arc.struct.StringMap
 import cf.wayzer.placehold.DynamicVar
 import mindustry.game.EventType.WorldLoadBeginEvent
 import mindustry.game.Gamemode
@@ -18,19 +17,18 @@ val nextSameMode by config.key(false, "自动换图是否选择相同模式地�
 MapRegistry.register(this, object : MapProvider() {
     override suspend fun searchMaps(search: String?): Collection<MapInfo> {
         if (search == "@internal") return maps.defaultMaps()
-            .mapIndexed { i, map -> MapInfo(this, i + 1, map, Gamemode.survival) }
+            .mapIndexed { i, map -> MapInfo(this, i + 1, Gamemode.survival, map) }
         maps.reload()
         val mapList = (if (configEnableInternMaps) maps.all() else maps.customMaps())
             .sortedBy { it.file.lastModified() }
-            .mapIndexed { i, map -> MapInfo(this, i + 1, map, bestMode(map)) }
+            .mapIndexed { i, map -> MapInfo(this, i + 1, bestMode(map), map) }
         return when {
             search.isNullOrEmpty() -> mapList
             search == "survive" -> mapList.filter { it.mode == Gamemode.survival }
             search == "attack" -> mapList.filter { it.mode == Gamemode.attack }
             search == "pvp" -> mapList.filter { it.mode == Gamemode.pvp }
             else -> mapList.filter {
-                it.map.name().contains(search, ignoreCase = true) || it.map.description()
-                    .contains(search, ignoreCase = true)
+                it.name.contains(search, ignoreCase = true) || it.description.contains(search, ignoreCase = true)
             }
         }
     }
@@ -50,7 +48,9 @@ MapRegistry.register(this, object : MapProvider() {
 registerVarForType<MapInfo>().apply {
     registerChild("id", "在/maps中的id", DynamicVar.obj { it.id.toString().padStart(3, '0') })
     registerChild("mode", "地图设定模式", DynamicVar.obj { it.mode.name })
-    registerChild("map", "Type@Map", DynamicVar.obj { it.map })
+    registerChild("name", "名字", DynamicVar.obj { it.name })
+    registerChild("author", "作者", DynamicVar.obj { it.author })
+    registerChild("description", "介绍", DynamicVar.obj { it.description })
 }
 
 registerVarForType<MdtMap>().apply {
@@ -108,9 +108,12 @@ listen<EventType.GameOverEvent> { event ->
                 | {winnerMsg}
                 | 下一张地图为:[accent]{nextMap.name}[] By: [accent]{nextMap.author}[]
                 | 下一场游戏将在 {waitTime} 秒后开始
-            """.trimMargin().with("nextMap" to map.map, "winnerMsg" to winnerMsg, "waitTime" to waitingTime.seconds)
+            """.trimMargin().with(
+            "nextMap" to map, "winnerMsg" to winnerMsg,
+            "waitTime" to waitingTime.seconds
+        )
         broadcast(msg, gameOverMsgType, quite = true)
-        ContentHelper.logToConsole("Next Map is ${map.map.name()}(ID:${map.id})")
+        ContentHelper.logToConsole("Next Map is ${map.name}(ID:${map.id})")
 
         delay(waitingTime.toMillis())
         if (state.map != now) return@launch//已经通过其他方式换图
@@ -118,11 +121,8 @@ listen<EventType.GameOverEvent> { event ->
     }
 }
 listen<WorldLoadBeginEvent>(insert = true) {
-    state.map = MapManager.current.map.run {
-        mindustry.maps.Map(file, width, height, StringMap(tags), custom, version, build)
-    }
-    MapManager.tmpRulesModifiers.forEach { it(state.rules) }
-    MapManager.tmpRulesModifiers = emptyList()
+    MapManager.tmpVarSet?.invoke()
+    MapManager.tmpVarSet = null
 }
 command("host", "管理指令: 换图") {
     usage = "[mapId]"
