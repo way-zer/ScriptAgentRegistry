@@ -20,7 +20,7 @@ fun VoteService.register() {
                 "[white]地图简介: [lightgrey]${truncate(stripColors(map.description), 100, "...")}[][]"
         start(
             player!!,
-            "换图([green]{nextMap.id}[]: [green]{nextMap.map.name}[yellow]|[green]{nextMap.mode}[])"
+            "换图([green]{nextMap.id}[]: [green]{nextMap.name}[yellow]|[green]{nextMap.mode}[])"
                 .with("nextMap" to map),
             extDesc = desc,
             supportSingle = true
