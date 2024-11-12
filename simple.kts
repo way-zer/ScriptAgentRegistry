@@ -1,4 +1,4 @@
-@file:Import("io.ktor:ktor-server-call-logging-jvm:2.2.4", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-call-logging-jvm:3.0.1", mavenDepends = true)
 
 package ktor
 
@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
 import io.ktor.serialization.jackson.*
-import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import org.slf4j.event.Level
 

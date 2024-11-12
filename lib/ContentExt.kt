@@ -16,9 +16,6 @@ fun Script.routing(body: Routing.() -> Unit) {
     }
 }
 
-@Deprecated("use ktorInit", ReplaceWith("this.ktorInit"))
-val Script.webInit by DSLBuilder.callbackKey<Application.() -> Unit>()
-
 @Deprecated(
     "use routing", ReplaceWith(
         "routing { route(path, method, body) }"
