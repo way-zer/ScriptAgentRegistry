@@ -12,10 +12,7 @@ import coreLibrary.lib.config
 import coreLibrary.lib.with
 import coreMindustry.lib.broadcast
 import coreMindustry.lib.game
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.*
 import mindustry.Vars
 import mindustry.core.GameState
 import mindustry.game.Rules
@@ -61,11 +58,28 @@ object MapManager {
     }
 
     suspend fun loadMapSync(info: MapInfo? = null) {
-        @Suppress("NAME_SHADOWING")
-        val info = info ?: MapRegistry.nextMapInfo()
-        val map = info.loadMap().run {
-            Map(file, width, height, StringMap(tags), custom, version, build) //copy tags
+        @Suppress("NAME_SHADOWING") var info: MapInfo? = info
+        try {
+            info = info ?: MapRegistry.nextMapInfo()
+            val map = info.loadMap().run {
+                Map(file, width, height, StringMap(tags), custom, version, build) //copy tags
+            }
+            loadMapSync(info, map)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            broadcast(
+                "[red]加载地图地图{info.name}失败: {reason}".with(
+                    "info" to (info ?: ""),
+                    "reason" to (e.message ?: "")
+                )
+            )
+            delay(1000)
+            loadMap()
+            throw CancellationException()
         }
+    }
+
+    suspend fun loadMapSync(info: MapInfo, map: Map) {
         val event = MapChangeEvent(info, map).apply {
             rules.idInTag = info.id
             Regex("\\[(@[a-zA-Z0-9]+)(=[^=\\]]+)?]").findAll(map.description()).forEach {
@@ -97,15 +111,8 @@ object MapManager {
             // Not generator: EventType.SaveLoadEvent
         } catch (e: Throwable) {
             tmpVarSet = null
-            broadcast(
-                "[red]地图{info.map.name}无效:{reason}".with(
-                    "info" to info,
-                    "reason" to (e.message ?: "")
-                )
-            )
             players.forEach { it.add() }
-            loadMap()
-            throw CancellationException()
+            throw e
         }
 
 
