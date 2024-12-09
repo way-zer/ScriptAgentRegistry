@@ -5,7 +5,6 @@
 
 package wayzer.ext
 
-import arc.util.Time
 import coreMindustry.PagedMenuBuilder
 import wayzer.VoteEvent
 
@@ -71,8 +70,9 @@ onEnable {
                 depends("wayzer/user/ban")?.import<(String, Int, String, PlayerProfile?) -> Unit>("ban")
                     ?.invoke(target.uuid(), 60, "投票踢出: $reason", PlayerData[player.uuid()].profile)
                     ?: run {
-                        target.info.lastKicked = Time.millis() + (15 * 60 * 1000) //Kick for 15 Minutes
-                        target.con?.kick("[yellow]你被投票踢出15分钟")
+                        Groups.player.filter { it.uuid() == target.uuid() }.forEach {
+                            it.con?.kick("[yellow]你被投票踢出60分钟", 60 * 60 * 1000)
+                        }
                     }
             }
         }
