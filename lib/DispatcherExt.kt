@@ -1,9 +1,14 @@
 package coreMindustry.lib
 
 import arc.Core
+import cf.wayzer.scriptAgent.thisContextScript
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlin.coroutines.CoroutineContext
+import java.util.logging.Level
+import kotlin.coroutines.*
+import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
+import kotlin.coroutines.intrinsics.intercepted
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 
 object MindustryDispatcher : CoroutineDispatcher() {
     private var mainThread: Thread? = null
@@ -19,9 +24,7 @@ object MindustryDispatcher : CoroutineDispatcher() {
     }
 
     override fun isDispatchNeeded(context: CoroutineContext): Boolean {
-        if (Thread.currentThread() == mainThread || mainThread?.isAlive != true)
-            return false
-        return true
+        return Thread.currentThread() != mainThread && mainThread?.isAlive == true
     }
 
     override fun dispatch(context: CoroutineContext, block: Runnable) {
@@ -34,6 +37,9 @@ object MindustryDispatcher : CoroutineDispatcher() {
 
     @OptIn(InternalCoroutinesApi::class)
     override fun dispatchYield(context: CoroutineContext, block: Runnable) {
+        thisContextScript().logger.log(
+            Level.WARNING, "avoid use yield() in Dispatchers.game, use nextTick instead", Exception()
+        )
         Core.app.post(block)
     }
 
@@ -63,15 +69,18 @@ object MindustryDispatcher : CoroutineDispatcher() {
     }
 
     fun <T> safeBlocking(block: suspend CoroutineScope.() -> T): T {
-        return if (inBlocking) runBlocking(Dispatchers.game, block)
-        else runBlocking {
-            inBlocking = true
+        check(Thread.currentThread() == mainThread) { "safeBlocking only for mainThread" }
+        if (inBlocking) return runBlocking(Dispatchers.game, block)
+        inBlocking = true
+        return runBlocking {
             launch {
                 while (inBlocking || blockingQueue.isNotEmpty()) {
                     blockingQueue.poll()?.run() ?: yield()
                 }
             }
-            withContext(Dispatchers.game, block).also {
+            try {
+                withContext(Dispatchers.game, block)
+            } finally {
                 inBlocking = false
             }
         }
@@ -94,3 +103,18 @@ val Dispatchers.game
 @Suppress("unused")
 val Dispatchers.gamePost
     get() = MindustryDispatcher.Post
+
+//suspend fun nextTick() = yield()
+suspend fun nextTick() {
+    val context = coroutineContext
+    context.ensureActive()
+    if (context[ContinuationInterceptor] !is MindustryDispatcher) {
+        suspendCoroutine { Core.app.post { it.resume(Unit) } }
+        return
+    }
+    suspendCoroutineUninterceptedOrReturn<Unit> sc@{ cont ->
+        val co = cont.intercepted() as? Runnable ?: return@sc Unit
+        Core.app.post(co)
+        COROUTINE_SUSPENDED
+    }
+}
