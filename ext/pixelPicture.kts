@@ -79,7 +79,7 @@ command("pixel", "绘制像素画".with()) {
                         draw(p.tileX() - img.width / 2 + x, p.tileY() + img.height / 2 - y, img.getRGB(x - 1, y - 1))
                         if (i > 10) {
                             i = 0
-                            yield()
+                            nextTick()
                         }
                     }
             }

@@ -12,6 +12,7 @@ import coreLibrary.lib.config
 import coreLibrary.lib.with
 import coreMindustry.lib.broadcast
 import coreMindustry.lib.game
+import coreMindustry.lib.nextTick
 import kotlinx.coroutines.*
 import mindustry.Vars
 import mindustry.core.GameState
@@ -96,7 +97,7 @@ object MapManager {
         Vars.logic.reset()
         //Hack: Some old tasks have posted, so we let they run.
         Vars.world.resize(0, 0)
-        yield()
+        nextTick()
 
         current = info
         try {
