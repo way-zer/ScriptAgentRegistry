@@ -37,47 +37,48 @@ registerVarForType<Player>().apply {
         getObTeam(it)?.let { team -> "[观战${team.coloredName()}]" }
     })
 }
+fun setObTeam(player: Player, team: Team?) {
+    if (team == null) {
+        teams.changeTeam(player, teams.spectateTeam)
+        obTeam.remove(player)
+        teams.changeTeam(player)
+        broadcast(
+            "[yellow]玩家[green]{player.name}[yellow]重新投胎到{player.team.colorizeName}"
+                .with("player" to player), type = MsgType.InfoToast, quite = true
+        )
+        return
+    }
+
+    teams.changeTeam(player, teams.spectateTeam)
+    obTeam[player] = team
+    broadcast(
+        "[yellow]玩家[green]{player.name}[yellow]正在观战{team}"
+            .with("player" to player, "team" to team), type = MsgType.InfoToast, quite = true
+    )
+    player.sendMessage("[green]再次输入指令可以重新投胎。点击核心可以快速切换观战队伍")
+}
 
 command("ob", "切换为观察者") {
     type = CommandType.Client
     permission = "wayzer.ext.observer"
     body {
         val player = player!!
-        val team = arg.firstOrNull()?.toIntOrNull()
-            ?.let { Team.all.getOrNull(it) }
-            ?: MenuBuilder<Team> {
-                title = "观战系统"
-                msg = "By [gold]WayZer\n选择队伍观战"
-                teams.allTeam.forEach {
-                    option(it.coloredName()) { it }
-                    newRow()
-                }
-                option("退出观战/重新投胎") { Team.derelict }
-                newRow()
-                option("关闭菜单") { Team.get(255) }
-            }.sendTo(player)?.takeUnless { it.id == 255 }
-            ?: return@body
-        when (team) {
-            Team.derelict -> {
-                teams.changeTeam(player, teams.spectateTeam)
-                obTeam.remove(player)
-                teams.changeTeam(player)
-                broadcast(
-                    "[yellow]玩家[green]{player.name}[yellow]重新投胎到{player.team.colorizeName}"
-                        .with("player" to player), type = MsgType.InfoToast, quite = true
-                )
-            }
-
-            else -> {
-                obTeam[player] = team
-                teams.changeTeam(player, teams.spectateTeam)
-                broadcast(
-                    "[yellow]玩家[green]{player.name}[yellow]正在观战{team}"
-                        .with("player" to player, "team" to team), type = MsgType.InfoToast, quite = true
-                )
-                player.sendMessage("[green]再次输入指令可以重新投胎。点击核心可以快速切换观战队伍")
-            }
+        val team = arg.firstOrNull()?.toIntOrNull()?.let { Team.all.getOrNull(it) }
+        if (team != null) {
+            setObTeam(player, team.takeUnless { it == Team.derelict })
+            return@body
         }
+        MenuBuilder {
+            title = "观战系统"
+            msg = "By [gold]WayZer\n选择队伍观战"
+            teams.allTeam.forEach {
+                option(it.coloredName()) { setObTeam(player, team) }
+                newRow()
+            }
+            option("退出观战/重新投胎") { setObTeam(player, null) }
+            newRow()
+            option("关闭菜单") { }
+        }.sendTo(player)
     }
 }
 
