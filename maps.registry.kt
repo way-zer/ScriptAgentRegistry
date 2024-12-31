@@ -1,5 +1,6 @@
 package wayzer
 
+import arc.struct.StringMap
 import arc.util.Log
 import cf.wayzer.scriptAgent.Event
 import cf.wayzer.scriptAgent.define.Script
@@ -58,6 +59,8 @@ class GetNextMapEvent(val previous: MapInfo?, var mapInfo: MapInfo) : Event, Eve
 }
 
 object MapRegistry : MapProvider() {
+    /** Dumb object for GeneratorMap */
+    val GeneratorMap = MdtMap(StringMap())
     private val providers = mutableSetOf<MapProvider>()
     fun register(script: Script, provider: MapProvider) {
         script.onDisable {
@@ -84,8 +87,8 @@ object MapRegistry : MapProvider() {
         previous: MapInfo? = null,
         mode: Gamemode = Gamemode.survival
     ): MapInfo {
-        val maps = searchMaps().let { maps ->
-            if (maps.isNotEmpty()) return@let maps
+        val maps = searchMaps()
+            .takeUnless { it.isEmpty() } ?: kotlin.run {
             Log.warn("服务器未安装地图,自动使用内置地图")
             searchMaps("@internal")
         }

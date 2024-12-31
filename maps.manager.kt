@@ -100,7 +100,11 @@ object MapManager {
 
         current = info
         try {
-            tmpVarSet = {
+            tmpVarSet = block@{
+                if (map == MapRegistry.GeneratorMap) {
+                    Vars.state.rules.idInTag = info.id
+                    return@block
+                }
                 Vars.state.map = map
                 Vars.state.rules = event.rules
             }
