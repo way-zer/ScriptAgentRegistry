@@ -71,8 +71,8 @@ listen<EventType.WorldLoadEvent> {
 listen<EventType.TileChangeEvent> {
     it.tile.getLinkedTiles(MapRenderer::update)
 }
-listen<EventType.ContentInitEvent> {
-    MapRenderer.loadColors(content)
+listen<EventType.ResetEvent> {
+    MapRenderer.img = null
 }
 onEnable {
     MapRenderer.loadColors(content)
@@ -84,9 +84,10 @@ registerVar("wayzer.ext.mapSnap._get", "地图快照截图接口", { MapRenderer
 command("saveSnap", "保存当前服务器地图截图") {
     type = CommandType.Server
     body {
+        val img = MapRenderer.img ?: returnReply("[red]地图未加载".with())
         val dir = dataDirectory.child("mapSnap").apply { mkdirs() }
         val file = dir.child("mapSnap-${SimpleDateFormat("YYYYMMdd-hhmm").format(Date())}.png")
-        file.write().use { ImageIO.write(MapRenderer.img, "png", it) }
+        file.write().use { ImageIO.write(img, "png", it) }
         reply("[green]快照已保存到{file}".with("file" to file))
     }
 }
