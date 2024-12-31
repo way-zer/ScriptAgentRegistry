@@ -5,10 +5,25 @@ package wayzer.ext
 
 import arc.util.Strings.stripColors
 import arc.util.Strings.truncate
-import mindustry.io.SaveIO
-import wayzer.MapManager
-import wayzer.MapRegistry
-import wayzer.VoteService
+import wayzer.*
+
+fun voteMap(player: Player, map: MapInfo) {
+    launch(Dispatchers.game) {
+        val event = VoteEvent(
+            this, player,
+            "换图([green]{nextMap.id}[]: [green]{nextMap.name}[yellow]|[green]{nextMap.mode}[])".with("nextMap" to map),
+            extDesc = "[white]地图作者: [lightgrey]${stripColors(map.author)}[][]\n" +
+                    "[white]地图简介: [lightgrey]${truncate(stripColors(map.description), 100, "...")}[][]",
+            supportSingle = true
+        )
+        if (!event.awaitResult()) return@launch
+        broadcast("[yellow]异步加载地图中，请耐心等待".with())
+        MapManager.loadMap(map)
+        Core.app.post { // 推后,确保地图成功加载
+            broadcast("[green]换图成功,当前地图[yellow]{map.name}[green](id: {map.id})".with())
+        }
+    }
+}
 
 fun VoteService.register() {
     addSubVote("换图投票", "<地图ID> [网络换图类型参数]", "map", "换图") {
@@ -16,21 +31,7 @@ fun VoteService.register() {
             returnReply("[red]请输入地图序号".with())
         val map = arg[0].toIntOrNull()?.let { MapRegistry.findById(it, reply) }
             ?: returnReply("[red]地图序号错误,可以通过/maps查询".with())
-        val desc = "[white]地图作者: [lightgrey]${stripColors(map.author)}[][]\n" +
-                "[white]地图简介: [lightgrey]${truncate(stripColors(map.description), 100, "...")}[][]"
-        start(
-            player!!,
-            "换图([green]{nextMap.id}[]: [green]{nextMap.name}[yellow]|[green]{nextMap.mode}[])"
-                .with("nextMap" to map),
-            extDesc = desc,
-            supportSingle = true
-        ) {
-            broadcast("[yellow]异步加载地图中，请耐心等待".with())
-            MapManager.loadMap(map)
-            Core.app.post { // 推后,确保地图成功加载
-                broadcast("[green]换图成功,当前地图[yellow]{map.name}[green](id: {map.id})".with())
-            }
-        }
+        voteMap(player!!, map)
     }
     addSubVote("回滚到某个存档(使用/slots查看)", "<存档ID>", "rollback", "load", "回档") {
         if (arg.firstOrNull()?.toIntOrNull() == null)

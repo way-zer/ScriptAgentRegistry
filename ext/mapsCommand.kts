@@ -1,5 +1,6 @@
 @file:Depends("wayzer/maps")
 @file:Depends("coreMindustry/menu", "maps菜单")
+@file:Depends("wayzer/ext/voteMap", "发起投票换图")
 
 package wayzer.ext
 
@@ -8,6 +9,7 @@ import coreMindustry.renderPaged
 import wayzer.MapRegistry
 
 val mapsPrePage by config.key(9, "/maps每页显示数")
+val voteMap = contextScript<VoteMap>()
 
 command("maps", "列出服务器地图") {
     usage = "[page/filter] [page]"
@@ -31,7 +33,11 @@ command("maps", "列出服务器地图") {
             }
             renderPaged(maps, page, mapsPrePage) {
                 option(template.with("info" to it).toPlayer(player)) {
-                    RootCommands.handleInput("vote map ${it.id}", player, "/")
+                    if (!player.hasPermission("wayzer.vote.map")) {
+                        player.sendMessage("[red]你没有投票换图的权限".with())
+                        return@option
+                    }
+                    voteMap.voteMap(player, it)
                 }
             }
         }.send().awaitWithTimeout()
