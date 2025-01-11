@@ -1,7 +1,9 @@
 @file:Depends("coreLibrary")
 @file:Import("io.ktor:ktor-server-netty-jvm:3.0.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-server-content-negotiation-jvm:3.0.1", mavenDepends = true)
+@file:Import("io.ktor:ktor-client-content-negotiation-jvm:3.0.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-serialization-jackson-jvm:3.0.1", mavenDepends = true)
+@file:Import("io.ktor:ktor-client-cio-jvm:3.0.1", mavenDepends = true)
 @file:Import("ktor.lib.*", defaultImport = true)
 @file:Import("io.ktor.http.*", defaultImport = true)
 @file:Import("io.ktor.server.application.*", defaultImport = true)
@@ -12,15 +14,25 @@
 package ktor
 
 import cf.wayzer.scriptAgent.events.ScriptEnableEvent
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.serialization.jackson.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
+import java.util.logging.Level
 
 val port by config.key(9090, "Web 端口")
+
+onEnable {
+    KtorClient = HttpClient(CIO) {
+        install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+            jackson {}
+        }
+    }
+    onDisable { KtorClient.close() }
+}
 
 onEnable {
     val env = serverConfig {
@@ -41,6 +53,7 @@ onEnable {
     @OptIn(FlowPreview::class)
     reloadFlow.debounce(1000)
         .onEach { server.reload() }
+        .catch { logger.log(Level.WARNING, "Exception when reload", it) }
         .launchIn(this)
 }
 
