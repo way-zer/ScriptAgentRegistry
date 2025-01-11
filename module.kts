@@ -20,7 +20,10 @@ import io.ktor.serialization.jackson.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import java.util.logging.Level
 
 val port by config.key(9090, "Web 端口")
@@ -52,9 +55,13 @@ onEnable {
     }
     @OptIn(FlowPreview::class)
     reloadFlow.debounce(1000)
-        .onEach { server.reload() }
-        .catch { logger.log(Level.WARNING, "Exception when reload", it) }
-        .launchIn(this)
+        .onEach {
+            try {
+                server.reload()
+            } catch (e: Throwable) {
+                logger.log(Level.WARNING, "Exception when reload", e)
+            }
+        }.launchIn(this)
 }
 
 val reloadFlow = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
