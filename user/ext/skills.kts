@@ -38,8 +38,7 @@ companion object Api {
 
         /** @param coolDown in ms,  -1一局冷却 */
         fun checkCoolDown(coolDown: Int, set: Boolean = true): Boolean {
-            val id = PlayerData[player.uuid()].profile?.id?.value ?: 0
-            val key = "${name}@$id"
+            val key = "${name}@${player.uuid()}"
             if (key in used) {
                 if (coolDown < 0) {
                     ctx.reply("[red]该技能每局限用一次".with())

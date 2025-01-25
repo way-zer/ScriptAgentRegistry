@@ -1,16 +1,11 @@
 @file:Depends("wayzer/maps", "监测投票换图")
-@file:Depends("wayzer/user/userService")
 
 package wayzer.user.ext
 
 import cf.wayzer.placehold.DynamicVar
 import cf.wayzer.placehold.PlaceHoldApi
-import coreLibrary.lib.util.loop
 import mindustry.game.Team
-import mindustry.world.Block
-import org.jetbrains.exposed.sql.transactions.transaction
 import wayzer.MapChangeEvent
-import wayzer.user.UserService
 import java.io.Serializable
 import java.time.Duration
 import kotlin.math.ceil
@@ -27,7 +22,8 @@ data class StatisticsData(
     var playedTime: Int = 0,
     var idleTime: Int = 0,
     var breakBlock: Int = 0,
-    @Transient var pvpTeam: Team = Team.sharded
+    @Transient var pvpTeam: Team = Team.sharded,
+    @Transient var profile: PlayerProfile? = null,
 ) : Serializable {
     //set when gameover
     var win: Boolean = false
@@ -46,8 +42,6 @@ val Player.active
     get() = depends("wayzer/user/ext/activeCheck")
         ?.import<(Player) -> Int>("inactiveTime")
         ?.let { it(this) < 5000 } ?: true
-
-val userService = contextScript<UserService>()
 
 //region Data
 @Savable
@@ -86,9 +80,10 @@ onEnable {
         delay(1000)
         Groups.player.forEach {
             it.data.name = it.info.lastName
-            it.data.playedTime++
-            if (it.dead() || !it.active)
-                it.data.idleTime++
+            if (it.data.profile == null)
+                it.data.profile = UserService.secureProfile(it)
+            if (!it.dead() && it.active)
+                it.data.playedTime++
         }
     }
 }
@@ -121,7 +116,7 @@ fun onGameOver(winner: Team) {
 
         val totalTime = sortedData.sumOf { it.playedTime - it.idleTime }
         val list = sortedData.map {
-            "{pvpState}{name}[white]({statistics.playedTime:分钟}/{statistics.idleTime:分钟})".with(
+            "{pvpState}{name}[white]({statistics.playedTime:分钟})".with(
                 "name" to it.name, "statistics" to it, "pvpState" to if (it.win) "[green][胜][]" else ""
             )
         }
@@ -131,24 +126,22 @@ fun onGameOver(winner: Team) {
             [yellow]总游戏时长: [white]{state.mapTime:分钟}
             [yellow]本局游戏时长: [white]{state.gameTime:分钟}
             [yellow]有效总贡献时长: [white]{totalTime:分钟}
-            [yellow]贡献排行榜(时长/挂机): [white]{list}
+            [yellow]贡献排行榜(时长): [white]{list}
             """.trimIndent()
                 .with("totalTime" to Duration.ofSeconds(totalTime.toLong()), "list" to list)
         )
 
-        if (sortedData.isNotEmpty() && gameTime > Duration.ofMinutes(15)) withContext(Dispatchers.IO) {
-            transaction {
-                sortedData.groupBy { PlayerData.findByIdWithTransaction(it.uuid)?.profile }
-                    .forEach { (profile, data) ->
-                        if (profile == null) return@forEach
-                        val best = data.maxBy { it.score }
-                        userService.updateExp(profile, best.exp, "游戏结算")
-                    }
-            }
+        if (sortedData.isNotEmpty() && gameTime > Duration.ofMinutes(15)) {
+            sortedData.groupBy { it.profile }
+                .forEach { (profile, data) ->
+                    if (profile == null) return@forEach
+                    val best = data.maxBy { it.score }
+                    UserService.updateExp(profile, best.exp, "游戏结算")
+                }
         }
     }
 }
-listenTo<MapChangeEvent>(Event.Priority.Before) {
+listenTo<MapChangeEvent>(Event.Priority.Watch) {
     if (statisticsData.none { it.value.playedTime > 60 }) return@listenTo
     onGameOver(Team.derelict)
 }

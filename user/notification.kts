@@ -15,40 +15,32 @@ fun notify(profile: PlayerProfile, message: String, params: Map<String, String>,
 export(::notify)
 
 
-fun List<NotificationEntity>.run(profile: PlayerProfile) {
-    val players = profile.players
-    launch(Dispatchers.game) {
-        if (players.isEmpty()) return@launch
-        forEach {
-            if (it.broadcast)
-                broadcast(
-                    it.message.with(
-                        *it.params.map { e -> e.key to e.value }.toTypedArray(),
-                        "player" to players.first()
-                    )
+fun List<NotificationEntity>.notify(profile: PlayerProfile) = launch(Dispatchers.game) {
+    val players = Groups.player.asIterable().filter { UserService.secureProfile(it) == profile }
+    forEach {
+        if (it.broadcast)
+            broadcast(
+                it.message.with(
+                    *it.params.map { e -> e.key to e.value }.toTypedArray(),
+                    "player" to players.first()
                 )
-            else players.forEach { p ->
-                p.sendMessage(it.message.with(*it.params.map { e -> e.key to e.value }.toTypedArray(), "player" to p))
-            }
+            )
+        else players.forEach { p ->
+            p.sendMessage(it.message.with(*it.params.map { e -> e.key to e.value }.toTypedArray(), "player" to p))
         }
-    }
-}
-
-fun loop() {
-    PlayerProfile.allOnline.toList().forEach { profile ->
-        transaction {
-            NotificationEntity.getNew(profile).toList()
-        }.takeUnless { it.isEmpty() }?.run(profile)
     }
 }
 
 registerTable(NotificationEntity.T, NotificationEntity.TimeTable)
 onEnable {
-    launch {
+    loop {
         DBApi.DB.awaitInit()
-        while (enabled) {
-            delay(5000)
-            loop()
+        delay(5000)
+        val online = Groups.player.mapNotNull { UserService.secureProfile(it) }.toSet()
+        online.forEach { profile ->
+            transaction {
+                NotificationEntity.getNew(profile).toList()
+            }.takeUnless { it.isEmpty() }?.notify(profile)
         }
     }
 }

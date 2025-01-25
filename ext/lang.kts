@@ -1,4 +1,5 @@
 @file:Depends("coreLibrary/lang", "多语言支持-核心")
+@file:Depends("wayzer/user", "获取用户偏好")
 
 package wayzer.ext
 
@@ -14,7 +15,7 @@ listen<EventType.PlayerLeave> {
 
 var Player.lang: String
     get() = tempLang[uuid()]
-        ?: PlayerData[uuid()].profile?.lang
+        ?: UserService.secureProfile(this)?.lang
         ?: locale
     set(v) {
         if (lang == v) return
@@ -24,7 +25,7 @@ var Player.lang: String
     }
 
 suspend fun setLang(player: Player, v: String) {
-    PlayerData[player.uuid()].secureProfile(player)?.apply {
+    UserService.secureProfile(player)?.apply {
         withContext(Dispatchers.IO) {
             transaction {
                 lang = v

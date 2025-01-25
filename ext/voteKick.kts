@@ -1,5 +1,5 @@
 @file:Depends("wayzer/vote", "投票实现")
-@file:Depends("wayzer/user/ban", "禁封实现", soft = true)
+@file:Depends("wayzer/user/ban", "禁封实现")
 @file:Depends("coreMindustry/utilTextInput", "输入理由")
 @file:Depends("coreMindustry/menu", "菜单选人")
 
@@ -47,6 +47,7 @@ suspend fun CommandContext.getInput(name: String, whenEmpty: PlaceHoldString): S
         } ?: returnReply(whenEmpty)
 }
 
+val banImpl = contextScript<wayzer.user.Ban>()
 onEnable {
     val script = this
     VoteEvent.VoteCommands += CommandInfo(this, "kick", "踢出某人") {
@@ -62,18 +63,13 @@ onEnable {
                 voteDesc = "踢人(踢出[red]{target}[yellow])".with("target" to target),
                 extDesc = "[red]理由: [yellow]${reason}"
             )
+            val snapshot = PlayerSnapshot(target)
             if (event.awaitResult()) {
                 if (target.hasPermission("wayzer.admin.skipKick"))
                     return@body broadcast(
                         "[red]错误: {target.name}[red]为管理员, 如有问题请与服主联系".with("target" to target)
                     )
-                depends("wayzer/user/ban")?.import<(String, Int, String, PlayerProfile?) -> Unit>("ban")
-                    ?.invoke(target.uuid(), 60, "投票踢出: $reason", PlayerData[player.uuid()].profile)
-                    ?: run {
-                        Groups.player.filter { it.uuid() == target.uuid() }.forEach {
-                            it.con?.kick("[yellow]你被投票踢出60分钟", 60 * 60 * 1000)
-                        }
-                    }
+                banImpl.ban(snapshot, 60, "投票踢出: $reason", player)
             }
         }
     }

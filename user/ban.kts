@@ -1,7 +1,6 @@
 package wayzer.user
 
 import coreLibrary.DBApi.DB.registerTable
-import mindustry.net.Packets
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.text.DateFormat
 import java.time.Duration
@@ -10,13 +9,13 @@ import java.util.*
 
 registerTable(PlayerBan.T)
 
-fun Player.kick(profile: PlayerProfile, ban: PlayerBan) {
+fun Player.kick(ban: PlayerBan) {
     fun format(instant: Instant) = DateFormat.getDateTimeInstance().format(Date.from(instant))
     kick(
         """
         [red]你已在该服被禁封[]
-        [yellow]名字: ${name()} [yellow]绑定qq: ${profile.qq}
-        [green]原因: ${ban.reason}
+        [yellow]名字: ${name()}
+        [green]原因: ${ban.reason} (封禁ID#${ban.id})
         [green]禁封时间: ${format(ban.createTime)}
         [green]解禁时间: ${format(ban.endTime)}
         [yellow]如有问题,请截图此页咨询管理员
@@ -25,40 +24,28 @@ fun Player.kick(profile: PlayerProfile, ban: PlayerBan) {
 }
 
 listen<EventType.PlayerConnect> {
-    val profile = PlayerData.findById(it.player.uuid())?.profile ?: return@listen
+    val id = UserService.getId(it.player)
     launch(Dispatchers.IO) {
-        val ban = transaction { PlayerBan.findNotEnd(profile.id) } ?: return@launch
+        val ban = transaction { PlayerBan.findNotEnd(id) } ?: return@launch
         withContext(Dispatchers.game) {
-            it.player.kick(profile, ban)
+            it.player.kick(ban)
         }
     }
 }
 
-suspend fun ban(uuid: String, time: Int, reason: String, operate: PlayerProfile?): PlayerProfile? {
-    val profile = withContext(Dispatchers.IO) {
-        transaction { PlayerData.findByIdWithTransaction(uuid) }?.profile
-    }
-    if (profile == null) {
-        netServer.admins.banPlayerID(uuid)
-        Groups.player.filter { it.uuid() == uuid }.forEach { it.kick(Packets.KickReason.banned) }
-        netServer.admins.getInfoOptional(uuid)?.let {
-            broadcast("[red] 管理员禁封了{target.name},原因: [yellow]{reason}".with("target" to it, "reason" to reason))
-        }
-    } else {
-        val ban = withContext(Dispatchers.IO) {
-            transaction {
-                PlayerBan.create(profile, Duration.ofMinutes(time.toLong()), reason, operate)
-            }
-        }
-        profile.players.toTypedArray().forEach {
-            it.kick(profile, ban)
-            broadcast("[red] 管理员禁封了{target.name},原因: [yellow]{reason}".with("target" to it, "reason" to reason))
+suspend fun ban(player: PlayerSnapshot, time: Int, reason: String, operate: Player?) {
+    val ban = withContext(Dispatchers.IO) {
+        transaction {
+            PlayerBan.create(
+                player.ids.toList(), Duration.ofMinutes(time.toLong()), reason,
+                operate?.let { UserService.secureProfile(it) })
         }
     }
-    return profile
+    Groups.player.filter { UserService.getId(it) in player.ids }.forEach {
+        it.kick(ban)
+        broadcast("[red] 管理员禁封了{target.name},原因: [yellow]{reason}".with("target" to it, "reason" to reason))
+    }
 }
-
-export(::ban)
 
 command("banX", "管理指令: 禁封") {
     usage = "<3位id> <时间|分钟> <原因>"
@@ -68,26 +55,24 @@ command("banX", "管理指令: 禁封") {
         val uuid = netServer.admins.getInfoOptional(arg[0])?.id
             ?: depends("wayzer/user/shortID")?.import<(String) -> String?>("getUUIDbyShort")?.invoke(arg[0])
             ?: returnReply("[red]请输入目标3位ID,不清楚可通过/list查询".with())
+        val snapshot = UserService.snapshots.getIfPresent(uuid) ?: returnReply("[red]未找到目标".with())
         val time = arg[1].toIntOrNull()?.takeIf { it > 0 } ?: replyUsage()
         val reason = arg.slice(2 until arg.size).joinToString(" ")
-        val operate = player?.let { PlayerData[it.uuid()].profile }
-        val qq = ban(uuid, time, reason, operate)?.qq
-        reply("[green]已禁封{qq}".with("qq" to (qq ?: uuid)))
+
+        ban(snapshot, time, reason, player)
+        reply("[green]已禁封{qq}".with("qq" to (uuid)))
     }
 }
 command("unbanX", "管理指令: 解禁") {
-    usage = "<qq>"
+    usage = "<id>"
     permission = "wayzer.admin.unban"
     body {
         if (arg.isEmpty()) replyUsage()
-        val qq = arg[0].toLongOrNull() ?: replyUsage()
+        val id = arg[0].toIntOrNull() ?: replyUsage()
         val ban = transaction {
-            val profile = PlayerProfile.findByQQ(qq) ?: return@transaction null
-            PlayerBan.findNotEnd(profile.id)?.also {
-                it.delete()
-            }
-        } ?: returnReply("[red]用户当前未被禁封".with())
-        logger.info("unban $qq ${ban.endTime} ${ban.reason}")
+            PlayerBan.findById(id)?.also { it.delete() }
+        } ?: returnReply("[red]找不到封禁记录，检查ID是否正确".with())
+        logger.info("unban ${ban.ids} ${ban.endTime} ${ban.reason}")
         reply("[green]解禁成功, 禁封原因: {reason}".with("reason" to ban.reason))
     }
 }
