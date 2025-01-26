@@ -1,12 +1,12 @@
-@file:Depends("coreMindustry")
 @file:Depends("coreLibrary/DBApi", "数据库服务")
+@file:Depends("coreMindustry")
 @file:Import("com.google.guava:guava:30.1-jre", mavenDepends = true)
 @file:Import("wayzer.lib.*", defaultImport = true)
-@file:Import("wayzer.lib.dao.*", defaultImport = true)
 
 package wayzer
 
-import coreLibrary.DBApi.DB.registerTable
+import mindustry.net.Packets
+import mindustry.net.Packets.ConnectPacket
 
 name = "WayZer Mindustry Plugin"
 /**
@@ -43,7 +43,28 @@ name = "WayZer Mindustry Plugin"
  * TODO: (ext/special/builderRobot)
  */
 
-registerTable(PlayerProfile.T, PlayerData.T, PlayerData.Usid)
+listenPacket2ServerAsync<ConnectPacket> { con, packet ->
+    if (con.address.startsWith("steam:")) {
+        packet.uuid = con.address.substring("steam:".length)
+    }
 
-Setting//ensure init
-PermissionExt//ensure init
+    if (Groups.player.any { pp -> pp.uuid() == packet.uuid }) {
+        con.kick(Packets.KickReason.idInUse)
+        return@listenPacket2ServerAsync false
+    }
+    val event = ConnectAsyncEvent(con, packet).emitAsync()
+    if (event.cancelled && !con.kicked)
+        con.kick("[red]拒绝入服: ${event.reason}")
+    !event.cancelled
+}
+
+listenTo<RequestPermissionEvent> {
+    val player = this.subject as? Player ?: return@listenTo
+    PlayerData[player].ids.let {
+        group = it.toList() + group
+    }
+}
+
+listen<EventType.PlayerLeave> {
+    PlayerData.onLeave(it.player)
+}

@@ -63,7 +63,7 @@ onEnable {
                 voteDesc = "踢人(踢出[red]{target}[yellow])".with("target" to target),
                 extDesc = "[red]理由: [yellow]${reason}"
             )
-            val snapshot = PlayerSnapshot(target)
+            val snapshot = PlayerData[target]
             if (event.awaitResult()) {
                 if (target.hasPermission("wayzer.admin.skipKick"))
                     return@body broadcast(

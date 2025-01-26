@@ -8,8 +8,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
 import org.jetbrains.exposed.sql.javatime.timestamp
-import wayzer.user.lib.NeedTransaction
-import wayzer.user.lib.PlayerProfile
+import wayzer.lib.PlayerData
 import java.time.Duration
 import java.time.Instant
 
@@ -23,26 +22,23 @@ class PlayerBan(id: EntityID<Int>) : IntEntity(id) {
     object T : IntIdTable("PlayerBanV2") {
         val ids = text("ids")
         val reason = text("reason", eagerLoading = true)
-        val operator = reference("operator", PlayerProfile.T).nullable()
+        val operator = text("operator").nullable()
         val createTime = timestamp("createTime").defaultExpression(CurrentTimestamp())
         val endTime = timestamp("endTime").defaultExpression(CurrentTimestamp())
     }
 
     companion object : IntEntityClass<PlayerBan>(T) {
-        @NeedTransaction
-        fun create(ids: List<String>, time: Duration, reason: String, operator: PlayerProfile?): PlayerBan {
+        fun create(ids: PlayerData, time: Duration, reason: String, operator: String?): PlayerBan {
             return new {
-                this.ids = ids.joinToString("$", "$", "$") { it }
+                this.ids = ids.idsInDB
                 endTime = Instant.now() + time
-                this.operator = operator?.id
+                this.operator = operator
                 this.reason = reason
             }
         }
 
-        @NeedTransaction
         fun allNotEnd() = find(T.endTime.greater(CurrentTimestamp()))
 
-        @NeedTransaction
         fun findNotEnd(id: String): PlayerBan? {
             return find { (T.ids like "%$${id}$%") and (T.endTime.greater(CurrentTimestamp())) }
                 .firstOrNull()

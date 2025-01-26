@@ -1,45 +1,29 @@
 @file:Depends("coreLibrary/lang", "多语言支持-核心")
-@file:Depends("wayzer/user", "获取用户偏好")
+@file:Depends("coreLibrary/extApi/KVStore", "储存语言设置")
 
 package wayzer.ext
 
 import cf.wayzer.placehold.DynamicVar
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.h2.mvstore.type.StringDataType
 
 name = "玩家语言设置"
 
-val tempLang = mutableMapOf<String, String>()//uuid -> lang
-listen<EventType.PlayerLeave> {
-    tempLang.remove(it.player.uuid())
-}
+val settings = contextScript<coreLibrary.extApi.KVStore>().open("langSettings", StringDataType.INSTANCE)
 
-var Player.lang: String
-    get() = tempLang[uuid()]
-        ?: UserService.secureProfile(this)?.lang
-        ?: locale
+var PlayerData.lang: String
+    get() = settings[id] ?: player?.locale ?: "zh"
     set(v) {
         if (lang == v) return
-        launch(Dispatchers.game) {
-            setLang(this@lang, v)
+        if (v == player?.locale) {
+            settings.remove(id)
+        } else {
+            settings[id] = v
         }
     }
-
-suspend fun setLang(player: Player, v: String) {
-    UserService.secureProfile(player)?.apply {
-        withContext(Dispatchers.IO) {
-            transaction {
-                lang = v
-            }
-        }
-    } ?: let {
-        tempLang[player.uuid()] = v
-        player.sendMessage("[yellow]当前未绑定账号,语言设置将在退出游戏后重置".with())
-    }
-}
 
 registerVarForType<Player>()
     .registerChild("lang", "多语言支持", DynamicVar.obj {
-        kotlin.runCatching { it.lang }.getOrNull()
+        kotlin.runCatching { PlayerData[it].lang }.getOrNull()
     })
 
 command("lang", "设置语言") {
@@ -47,8 +31,9 @@ command("lang", "设置语言") {
     type = CommandType.Client
     body {
         if (arg.isEmpty()) returnReply("[yellow]你的当前语言是: {receiver.lang}".with())
-        setLang(player!!, arg[0])
-        reply("[green]你的语言已设为 {v}".with("v" to player!!.lang))
+        val data = PlayerData[player!!]
+        data.lang = arg[0]
+        reply("[green]你的语言已设为 {v}".with("v" to data.lang))
     }
 }
 

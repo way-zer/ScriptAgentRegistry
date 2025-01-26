@@ -24,24 +24,23 @@ fun Player.kick(ban: PlayerBan) {
 }
 
 listen<EventType.PlayerConnect> {
-    val id = UserService.getId(it.player)
     launch(Dispatchers.IO) {
-        val ban = transaction { PlayerBan.findNotEnd(id) } ?: return@launch
+        val ban = transaction { PlayerBan.findNotEnd(PlayerData[it.player].id) } ?: return@launch
         withContext(Dispatchers.game) {
             it.player.kick(ban)
         }
     }
 }
 
-suspend fun ban(player: PlayerSnapshot, time: Int, reason: String, operate: Player?) {
+suspend fun ban(player: PlayerData, time: Int, reason: String, operate: Player?) {
     val ban = withContext(Dispatchers.IO) {
         transaction {
             PlayerBan.create(
-                player.ids.toList(), Duration.ofMinutes(time.toLong()), reason,
-                operate?.let { UserService.secureProfile(it) })
+                player, Duration.ofMinutes(time.toLong()), reason,
+                operate?.let { PlayerData[it].id })
         }
     }
-    Groups.player.filter { UserService.getId(it) in player.ids }.forEach {
+    Groups.player.filter { PlayerData[it].id in player.ids }.forEach {
         it.kick(ban)
         broadcast("[red] 管理员禁封了{target.name},原因: [yellow]{reason}".with("target" to it, "reason" to reason))
     }
@@ -55,7 +54,7 @@ command("banX", "管理指令: 禁封") {
         val uuid = netServer.admins.getInfoOptional(arg[0])?.id
             ?: depends("wayzer/user/shortID")?.import<(String) -> String?>("getUUIDbyShort")?.invoke(arg[0])
             ?: returnReply("[red]请输入目标3位ID,不清楚可通过/list查询".with())
-        val snapshot = UserService.snapshots.getIfPresent(uuid) ?: returnReply("[red]未找到目标".with())
+        val snapshot = PlayerData.history.getIfPresent(uuid) ?: returnReply("[red]未找到目标".with())
         val time = arg[1].toIntOrNull()?.takeIf { it > 0 } ?: replyUsage()
         val reason = arg.slice(2 until arg.size).joinToString(" ")
 
