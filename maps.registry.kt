@@ -60,7 +60,7 @@ class GetNextMapEvent(val previous: MapInfo?, var mapInfo: MapInfo) : Event, Eve
 
 object MapRegistry : MapProvider() {
     /** Dumb object for GeneratorMap */
-    val GeneratorMap = MdtMap(StringMap())
+    val GeneratorMap by lazy { MdtMap(StringMap()) }
     private val providers = mutableSetOf<MapProvider>()
     fun register(script: Script, provider: MapProvider) {
         script.onDisable {
