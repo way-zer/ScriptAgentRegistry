@@ -72,7 +72,7 @@ command("ob", "切换为观察者") {
             title = "观战系统"
             msg = "By [gold]WayZer\n选择队伍观战"
             teams.allTeam.forEach {
-                option(it.coloredName()) { setObTeam(player, team) }
+                option(it.coloredName()) { setObTeam(player, it) }
                 newRow()
             }
             option("退出观战/重新投胎") { setObTeam(player, null) }
