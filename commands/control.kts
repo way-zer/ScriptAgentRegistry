@@ -1,7 +1,7 @@
 package coreLibrary.commands
 
 import cf.wayzer.scriptAgent.impl.ScriptCache
-import cf.wayzer.scriptAgent.util.CASScriptRegistry
+import cf.wayzer.scriptAgent.util.CASScriptPack
 import cf.wayzer.scriptAgent.util.MetadataFile
 
 suspend inline fun runIgnoreCancel(sync: Boolean, crossinline body: suspend () -> Unit) {
@@ -167,6 +167,17 @@ onEnable {
                 }
                 reply("[green]生成完成".with())
             }
+        }
+    }
+    Commands.controlCommand += CommandInfo(this, "packModule", "打包模块") {
+        usage = "<module>"
+        permission = "scriptAgent.control.packModule"
+        body {
+            val module = arg.getOrNull(0) ?: replyUsage()
+            val scripts = ScriptRegistry.allScripts { it.id.startsWith("$module/") }
+                .mapNotNull { it.compiledScript }
+            CASScriptPack.Packer(Config.cacheDir.resolve("$module.packed.zip").outputStream())
+                .use { scripts.forEach(it::add) }
         }
     }
 }
