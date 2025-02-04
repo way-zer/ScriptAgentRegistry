@@ -5,7 +5,6 @@
 
 package coreMindustry
 
-import coreLibrary.lib.util.withContextClassloader
 import org.jline.reader.*
 import org.jline.utils.AttributedString
 import java.io.ByteArrayOutputStream
@@ -48,9 +47,11 @@ class MyPrintStream(private val block: (String) -> Unit) : PrintStream(ByteArray
 object MyCompleter : Completer {
     override fun complete(reader: LineReader, line: ParsedLine, candidates: MutableList<Candidate>) {
         val cmd = line.line().substring(0, line.cursor()).split(' ')
-        runBlocking(Dispatchers.game) {
-            candidates += RootCommands.tabComplete(null, cmd).map {
-                Candidate(it)
+        runBlocking {
+            withContext(Dispatchers.game) {
+                candidates += RootCommands.tabComplete(null, cmd).map {
+                    Candidate(it)
+                }
             }
         }
     }
@@ -106,7 +107,7 @@ fun start() {
         reader = withContextClassloader {
             LineReaderBuilder.builder()
                 .completer(MyCompleter)
-                .variable(LineReader.HISTORY_FILE,Config.cacheDir.resolve("console.history"))
+                .variable(LineReader.HISTORY_FILE, Config.cacheDir.resolve("console.history"))
                 .build()
         }
         val bakOut = System.out
