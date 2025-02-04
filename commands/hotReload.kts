@@ -1,4 +1,4 @@
-package coreLibrary
+package coreLibrary.commands
 
 import cf.wayzer.placehold.PlaceHoldApi.with
 import cf.wayzer.scriptAgent.registry.DirScriptRegistry
@@ -73,7 +73,6 @@ onEnable {
             }
         }
     }
-    onDisable { Commands.controlCommand.removeAll(this) }
 }
 
 onDisable {

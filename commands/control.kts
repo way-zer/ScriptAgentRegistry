@@ -1,7 +1,7 @@
 package coreLibrary.commands
 
 import cf.wayzer.scriptAgent.impl.ScriptCache
-import cf.wayzer.scriptAgent.util.CASScriptPacker
+import cf.wayzer.scriptAgent.util.CASScriptRegistry
 import cf.wayzer.scriptAgent.util.MetadataFile
 
 suspend inline fun runIgnoreCancel(sync: Boolean, crossinline body: suspend () -> Unit) {
@@ -35,7 +35,7 @@ onEnable {
                 val counts = ScriptRegistry.allScripts().map { it.id.substringBefore(Config.idSeparator) }
                     .groupBy { it }.mapValues { it.value.size }
                 val list = counts.entries.sortedBy { it.key }
-                    .map { "[purple]${it.key.padEnd(20)} [blue]${it.value}" }
+                    .map { "[purple]${(it.key + "...").padEnd(20)} [blue]${it.value}" }
                 returnReply("[yellow]==== [light_yellow]已加载模块[yellow] ====\n{list:\n}".with("list" to list))
             }
             val list = ScriptRegistry.allScripts {
@@ -167,18 +167,6 @@ onEnable {
                 }
                 reply("[green]生成完成".with())
             }
-        }
-    }
-    Commands.controlCommand += CommandInfo(this, "packModule", "打包模块") {
-        usage = "<module>"
-        permission = "scriptAgent.control.packModule"
-        body {
-            val module = arg.getOrNull(0) ?: replyUsage()
-            val scripts = ScriptRegistry.allScripts { it.id.startsWith("$module/") }
-                .mapNotNull { it.compiledScript }
-            @OptIn(SAExperimentalApi::class)
-            CASScriptPacker(Config.cacheDir.resolve("$module.packed.zip").outputStream())
-                .use { scripts.forEach(it::add) }
         }
     }
 }

@@ -1,4 +1,4 @@
-package coreLibrary
+package coreLibrary.commands
 
 import coreLibrary.lib.PlaceHold.registeredVars
 import coreLibrary.lib.util.menu
@@ -26,5 +26,4 @@ onEnable {
             })
         }
     }
-    Commands.controlCommand.autoRemove(this)
 }

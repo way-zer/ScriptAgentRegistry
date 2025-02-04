@@ -1,4 +1,4 @@
-package coreLibrary
+package coreLibrary.commands
 
 val handler = PermissionApi.StringPermissionHandler()
 onEnable { PermissionApi.handlers.add(0, handler) }

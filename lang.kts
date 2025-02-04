@@ -159,7 +159,6 @@ onEnable {
         permission = dotId
         body(commands)
     }
-    Commands.controlCommand.autoRemove(this)
     launch {
         load()
         while (isActive) {
