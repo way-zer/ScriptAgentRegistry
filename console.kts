@@ -99,7 +99,10 @@ lateinit var reader: LineReader
 fun start() {
     launch(Dispatchers.IO + CoroutineName("Console Reader")) {
         reader = withContextClassloader {
-            LineReaderBuilder.builder().completer(MyCompleter).build()
+            LineReaderBuilder.builder()
+                .completer(MyCompleter)
+                .variable(LineReader.HISTORY_FILE,Config.cacheDir.resolve("console.history"))
+                .build()
         }
         val bakOut = System.out
         System.setOut(MyPrintStream {
@@ -109,6 +112,7 @@ fun start() {
             handleInput(reader)
         } finally {
             System.setOut(bakOut)
+            reader.terminal.close()
         }
     }
 }
