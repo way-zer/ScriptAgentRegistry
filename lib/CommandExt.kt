@@ -13,7 +13,10 @@ import mindustry.gen.Player
  * 所有body将在 Dispatchers.game下调用, 费时操作请注意launch并切换Dispatcher
  */
 @ScriptDsl
-@Deprecated("move to coreLibrary", ReplaceWith("command(name,description.with()){init()}", "coreLibrary.lib.command"))
+@Deprecated(
+    "move to coreLibrary", ReplaceWith("command(name,description.with()){init()}", "coreLibrary.lib.command"),
+    DeprecationLevel.HIDDEN
+)
 fun Script.command(name: String, description: String, init: CommandInfo.() -> Unit) {
     command(name, description.with()) { init() }
 }
