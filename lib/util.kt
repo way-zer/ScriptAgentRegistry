@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 
 //find and ensure loaded
 internal suspend fun findAndLoadScript(id: String): ScriptInfo? {
-    val script = ScriptRegistry.findScriptInfo(id) ?: return null
+    val script = ScriptRegistry.getScriptInfo(id) ?: return null
     ScriptManager.transaction {
         add(script)
         load()
