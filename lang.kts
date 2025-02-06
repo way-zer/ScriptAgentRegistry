@@ -43,6 +43,7 @@ inner class Sentence(val raw: String) {
 private val file: File get() = Config.dataDir.resolve("lang.ini")
 val data = mutableMapOf<String, Sentence>()
 var lastSave = 0L
+var needSave = false
 fun save() {
     file.bufferedWriter().use { writer ->
         writer.appendLine("# ScriptAgent Lang File")
@@ -72,6 +73,7 @@ fun save() {
         }
     }
     lastSave = file.lastModified()
+    needSave = false
 }
 
 fun load() {
@@ -125,6 +127,7 @@ registerVarForType<CommandContext.ConsoleReceiver>().registerChild("lang", "控�
 registerVar(TemplateHandlerKey, "多语言处理", TemplateHandler.new {
     val lang = getVarString("receiver.lang") ?: return@new it
     data.getOrPut(it) {
+        needSave = true
         Sentence(it).also { sentence ->
             launch { NewSentenceEvent(sentence).emitAsync() }
         }
@@ -163,6 +166,7 @@ onEnable {
         load()
         while (isActive) {
             delay(60_000)
+            if (!needSave) continue
             if (lastSave < file.lastModified()) {
                 logger.warning("自动保存失败: 语言文件已改动，请使用/sa lang save手动保存")
                 continue
