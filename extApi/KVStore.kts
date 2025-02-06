@@ -9,6 +9,7 @@ import org.h2.mvstore.type.StringDataType
 import java.util.logging.Level
 
 val store by lazy {
+    Config.dataDir.mkdirs()
     MVStore.Builder()
         .fileName(Config.dataDir.resolve("kvStore.mv").path)
         .backgroundExceptionHandler { _, e -> logger.log(Level.SEVERE, "MVStore background error", e) }
