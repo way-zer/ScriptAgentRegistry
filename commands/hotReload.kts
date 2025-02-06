@@ -24,9 +24,9 @@ fun enableWatch() {
                 if (event.count() != 1) return@forEach
                 val file = (key.watchable() as Path).resolve(event.context() as? Path ?: return@forEach)
                 when {
-                    file.toString().endsWith(Config.contentScriptSuffix) -> { //处理子脚本
+                    file.toString().endsWith(Config.scriptSuffix) -> { //处理子脚本
                         val id = DirScriptRegistry.getIdByFile(file.toFile(), Config.rootDir)
-                        val script = ScriptRegistry.findScriptInfo(id) ?: return@forEach
+                        val script = ScriptRegistry.getScriptInfo(id) ?: return@forEach
                         logger.info("脚本文件更新: ${event.kind().name()} ${script.id}")
                         delay(1000)
                         val state = script.scriptState

@@ -65,7 +65,7 @@ onEnable {
             val async = checkArg("--async")
 
             if (arg.isEmpty()) replyUsage()
-            val script = ScriptRegistry.findScriptInfo(arg[0])
+            val script = ScriptRegistry.getScriptInfo(arg[0])
                 ?: returnReply("[red]找不到模块或者脚本".with())
             if (noCache) {
                 val file = Config.cacheFile(script.id)
