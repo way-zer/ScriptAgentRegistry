@@ -2,16 +2,13 @@ package coreStandalone.lib
 
 import cf.wayzer.scriptAgent.define.Script
 import cf.wayzer.scriptAgent.define.ScriptDsl
-import coreLibrary.lib.ColorApi
-import coreLibrary.lib.CommandContext
-import coreLibrary.lib.CommandInfo
-import coreLibrary.lib.Commands
+import coreLibrary.lib.*
 
-object RootCommands : Commands() {
+object RootCommands {
     suspend fun tabComplete(args: List<String>): List<String> {
         var result: List<String> = emptyList()
         try {
-            onComplete(CommandContext().apply {
+            Commands.Root.onComplete(CommandContext().apply {
                 reply = {}
                 replyTabComplete = { result = it;CommandInfo.Return() }
                 arg = args
@@ -41,7 +38,7 @@ object RootCommands : Commands() {
      */
     suspend fun handleInput(text: String, prefix: String = "") {
         if (text.isEmpty()) return
-        RootCommands.invoke(CommandContext().apply {
+        Commands.Root(CommandContext().apply {
             hasPermission = { true }
             reply = { println(ColorApi.handle(it.toString(), ColorApi::consoleColorHandler)) }
             this.prefix = prefix.ifEmpty { "* " }
@@ -51,10 +48,14 @@ object RootCommands : Commands() {
 }
 
 @ScriptDsl
+@Deprecated(
+    "move to coreLibrary",
+    ReplaceWith("command(name,description.with()){init()}", "coreLibrary.lib.command"),
+)
 fun Script.command(
     name: String,
     description: String,
     init: CommandInfo.() -> Unit = {}
 ) {
-    RootCommands.addSub(CommandInfo(this, name, description, init))
+    command(name, description.with()) { init() }
 }
