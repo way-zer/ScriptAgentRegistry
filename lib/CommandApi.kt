@@ -294,3 +294,8 @@ inline fun Script.command(
         commands.addSub(command)
     }
 }
+
+@ScriptDsl
+inline fun Script.command(name: String, description: String, init: CommandInfo.() -> Unit) {
+    command(name, description.with()) { init() }
+}
