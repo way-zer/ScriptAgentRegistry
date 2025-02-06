@@ -40,6 +40,10 @@ object RootCommands {
             return origin + Root.getSubCommands(context)
                 .filterValues { if (context.player != null) it.type.client() else it.type.server() }
         }
+
+        init {
+            Root.addSub(subCommands["help"]!!)//replace help
+        }
     }
 
     init {
