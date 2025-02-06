@@ -1,11 +1,10 @@
 @file:Depends("wayzer/maps")
 
-package wayzer.ext
+package wayzer.map
 
 import arc.files.Fi
 import arc.util.Strings
 import arc.util.serialization.Jval
-import cf.wayzer.placehold.PlaceHoldApi.with
 import com.google.common.cache.CacheBuilder
 import mindustry.game.Gamemode
 import mindustry.io.MapIO
@@ -21,10 +20,7 @@ import java.util.logging.Level
 
 name = "资源站配套脚本"
 
-val token by config.key("", "Mindustry资源站服务器Token")
 val webRoot by config.key("https://api.mindustry.top", "Mindustry资源站Api")
-
-val tokenOk get() = token.isNotBlank()
 
 fun Jval.toStringMap(): Map<String, String> = buildMap {
     asObject().forEach {
@@ -55,7 +51,6 @@ MapRegistry.register(this, object : MapProvider() {
         .build<String, List<MapInfo>>()!!
 
     override suspend fun searchMaps(search: String?): Collection<MapInfo> {
-        if (!tokenOk) return emptyList()
         val provider = this
         val mappedSearch = when (search) {
             "all", "display", "site", null -> ""
@@ -87,10 +82,6 @@ MapRegistry.register(this, object : MapProvider() {
 
     override suspend fun findById(id: Int, reply: ((PlaceHoldString) -> Unit)?): MapInfo? {
         if (id !in 10000..99999) return null
-        if (!tokenOk) {
-            reply?.invoke("[red]本服未开启网络换图，请联系服主开启".with())
-            return null
-        }
         try {
             val info = httpGet("$webRoot/maps/thread/$id/latest")
                 .let { Jval.read(it.toString(Charsets.UTF_8)) }

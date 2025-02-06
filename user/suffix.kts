@@ -1,4 +1,4 @@
-package wayzer.ext
+package wayzer.user
 
 import cf.wayzer.placehold.DynamicVar
 import mindustry.gen.Iconc

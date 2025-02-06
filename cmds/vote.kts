@@ -1,6 +1,6 @@
 @file:Depends("wayzer/vote", "投票实现")
 
-package wayzer.ext
+package wayzer.cmds
 
 import arc.Events
 import arc.util.Time

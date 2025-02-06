@@ -1,4 +1,4 @@
-package wayzer.admin
+package wayzer.cmds
 
 import arc.Events
 import mindustry.core.GameState

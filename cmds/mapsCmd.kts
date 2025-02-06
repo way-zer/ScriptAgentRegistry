@@ -1,8 +1,8 @@
 @file:Depends("wayzer/maps")
 @file:Depends("coreMindustry/menu", "maps菜单")
-@file:Depends("wayzer/ext/voteMap", "发起投票换图")
+@file:Depends("wayzer/cmds/voteMap", "发起投票换图")
 
-package wayzer.ext
+package wayzer.cmds
 
 import coreMindustry.MenuV2
 import coreMindustry.renderPaged

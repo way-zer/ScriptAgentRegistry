@@ -3,7 +3,7 @@
 @file:Depends("coreMindustry/utilTextInput", "输入理由")
 @file:Depends("coreMindustry/menu", "菜单选人")
 
-package wayzer.ext
+package wayzer.cmds
 
 import coreMindustry.PagedMenuBuilder
 import wayzer.VoteEvent

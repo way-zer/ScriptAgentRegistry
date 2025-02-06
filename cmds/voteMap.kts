@@ -1,7 +1,7 @@
 @file:Depends("wayzer/maps", "地图管理")
 @file:Depends("wayzer/vote", "投票实现")
 
-package wayzer.ext
+package wayzer.cmds
 
 import arc.util.Strings.stripColors
 import arc.util.Strings.truncate

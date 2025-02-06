@@ -1,4 +1,4 @@
-package wayzer.ext
+package wayzer.cmds
 
 import arc.math.geom.Vec2
 import mindustry.core.World

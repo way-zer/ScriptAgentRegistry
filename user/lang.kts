@@ -1,7 +1,7 @@
 @file:Depends("coreLibrary/lang", "多语言支持-核心")
 @file:Depends("coreLibrary/extApi/KVStore", "储存语言设置")
 
-package wayzer.ext
+package wayzer.user
 
 import cf.wayzer.placehold.DynamicVar
 import org.h2.mvstore.type.StringDataType

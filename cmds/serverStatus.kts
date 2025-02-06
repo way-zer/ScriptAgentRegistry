@@ -1,4 +1,4 @@
-package wayzer.ext
+package wayzer.cmds
 
 command("status", "获取服务器信息") {
     aliases = listOf("服务器状态")
