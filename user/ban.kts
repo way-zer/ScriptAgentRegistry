@@ -1,3 +1,5 @@
+@file:Depends("coreLibrary/DBApi", "数据库储存")
+
 package wayzer.user
 
 import coreLibrary.DBApi.DB.registerTable
