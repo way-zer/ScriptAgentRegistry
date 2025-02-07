@@ -68,7 +68,7 @@ withContextClassloader {
     val txlib = Config.dataDir.resolve("txlib/8.9.73")
     if (txlib.exists()) {
         QSignService.Factory.apply {
-            init(Config.dataDir.resolve("txlib/8.9.73"))
+            init(txlib)
             loadProtocols()
             register()
         }
@@ -90,7 +90,7 @@ onEnable {
             protocol = qqProtocol
             parentCoroutineContext = coroutineContext
             loginSolver = StandardCharImageLoginSolver({ channel.receive() })
-            enableContactCache()
+//            enableContactCache()
         }
     }
     launch { bot.login() }
