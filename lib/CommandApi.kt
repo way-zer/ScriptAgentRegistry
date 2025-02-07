@@ -4,12 +4,12 @@ package coreLibrary.lib
 
 import cf.wayzer.placehold.DynamicVar
 import cf.wayzer.scriptAgent.define.Script
+import cf.wayzer.scriptAgent.define.ScriptDsl
 import cf.wayzer.scriptAgent.events.ScriptDisableEvent
 import cf.wayzer.scriptAgent.listenTo
 import cf.wayzer.scriptAgent.thisContextScript
 import cf.wayzer.scriptAgent.util.DSLBuilder
 import coreLibrary.lib.PlaceHold.registerForType
-import coreLibrary.lib.util.ServiceRegistry
 import coreLibrary.lib.util.menu
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -84,8 +84,12 @@ class CommandInfo(
     val script: Script?,
     val name: String,
     val description: PlaceHoldString,
-    init: CommandInfo.() -> Unit
 ) : DSLBuilder(), CommandHandler, TabCompleter {
+    constructor(script: Script?, name: String, description: PlaceHoldString, init: CommandInfo.() -> Unit)
+            : this(script, name, description) {
+        init()
+    }
+
     constructor(script: Script?, name: String, description: String, init: CommandInfo.() -> Unit = {})
             : this(script, name, description.with(), init)
 
@@ -104,10 +108,6 @@ class CommandInfo(
     @CommandBuilder
     fun body(body: CommandHandler) {
         this.body = body
-    }
-
-    init {
-        this.init()
     }
 
     override suspend fun onComplete(context: CommandContext) {
@@ -225,7 +225,7 @@ open class Commands : CommandHandler, TabCompleter {
     }
 
     init {
-        addSub(CommandInfo(null, "help", "帮助指令".with()) {
+        addSub(CommandInfo(null, "help", "帮助指令".with()).apply {
             usage = "[-v] [page]"
             aliases = listOf("帮助")
             body {
@@ -235,24 +235,21 @@ open class Commands : CommandHandler, TabCompleter {
         })
     }
 
-    companion object {
-        val rootProvider = ServiceRegistry<Commands>()
-        val controlCommand = Commands()
-
+    object Root : Commands() {
         init {
-            thisContextScript().apply {
-                rootProvider.subscribe(this) {
-                    it += CommandInfo(null, "ScriptAgent", "ScriptAgent 控制指令".with()) {
-                        aliases = listOf("sa")
-                        permission = "scriptAgent.admin"
-                        body(controlCommand)
-                    }
-                }
-                listenTo<ScriptDisableEvent> {
-                    rootProvider.getOrNull()?.removeAll(script)
-                }
+            this += CommandInfo(null, "ScriptAgent", "ScriptAgent 控制指令".with()).apply {
+                aliases = listOf("sa")
+                permission = "scriptAgent.admin"
+                body(controlCommand)
+            }
+            thisContextScript().listenTo<ScriptDisableEvent> {
+                removeAll(script)
             }
         }
+    }
+
+    companion object {
+        val controlCommand = Commands()
 
         fun CommandContext.helpInfo(it: CommandInfo, showDetail: Boolean): PlaceHoldString {
             val alias = if (it.aliases.isEmpty()) "" else it.aliases.joinToString(prefix = "(", postfix = ")")
@@ -282,5 +279,18 @@ open class Commands : CommandHandler, TabCompleter {
                     context.helpInfo(it, showDetail)
                 })
             }
+    }
+}
+
+@ScriptDsl
+inline fun Script.command(
+    name: String,
+    description: PlaceHoldString,
+    commands: Commands = Commands.Root,
+    init: CommandInfo.() -> Unit
+) {
+    val command = CommandInfo(this, name, description).apply(init)
+    onEnable {
+        commands.addSub(command)
     }
 }
