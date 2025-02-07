@@ -32,7 +32,6 @@ fun updateOriginCommandHandler(client: arc.util.CommandHandler, server: arc.util
 Listener//ensure init
 
 onEnable {
-    Commands.rootProvider.provide(this, RootCommands)
     updateOriginCommandHandler(
         MyCommandHandler("/", Config.clientCommands),
         MyCommandHandler("", Config.serverCommands)

@@ -4,6 +4,8 @@ import cf.wayzer.scriptAgent.define.Script
 import cf.wayzer.scriptAgent.define.ScriptDsl
 import coreLibrary.lib.CommandHandler
 import coreLibrary.lib.CommandInfo
+import coreLibrary.lib.command
+import coreLibrary.lib.with
 import mindustry.gen.Player
 
 /**
@@ -11,15 +13,16 @@ import mindustry.gen.Player
  * 所有body将在 Dispatchers.game下调用, 费时操作请注意launch并切换Dispatcher
  */
 @ScriptDsl
+@Deprecated("move to coreLibrary", ReplaceWith("command(name,description.with()){init()}", "coreLibrary.lib.command"))
 fun Script.command(name: String, description: String, init: CommandInfo.() -> Unit) {
-    onEnable {
-        RootCommands += CommandInfo(this, name, description, init)
-    }
+    command(name, description.with()) { init() }
 }
 
-@Deprecated("use new command api", ReplaceWith("command(name,description){init\nbody(handler)}"))
+@Deprecated(
+    "use new command api", ReplaceWith("command(name,description.with()){init\nbody(handler)}"), DeprecationLevel.ERROR
+)
 fun Script.command(name: String, description: String, init: CommandInfo.() -> Unit, handler: CommandHandler) {
-    command(name, description) {
+    command(name, description.with()) {
         init()
         body(handler)
     }

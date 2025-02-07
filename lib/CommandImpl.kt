@@ -4,42 +4,42 @@ package coreMindustry.lib
 
 import arc.struct.Seq
 import arc.util.CommandHandler
-import cf.wayzer.scriptAgent.*
+import cf.wayzer.scriptAgent.Config
+import cf.wayzer.scriptAgent.clientCommands
+import cf.wayzer.scriptAgent.serverCommands
 import cf.wayzer.scriptAgent.thisContextScript
 import cf.wayzer.scriptAgent.util.DSLBuilder
-import coreLibrary.lib.*
+import coreLibrary.lib.CommandContext
+import coreLibrary.lib.CommandInfo
+import coreLibrary.lib.Commands
+import coreLibrary.lib.PlaceHoldString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import mindustry.gen.Player
 
-object RootCommands : Commands() {
-    override fun getSubCommands(context: CommandContext?): Map<String, CommandInfo> {
-        if (context == null) return super.getSubCommands(null)
-        //合并原版指令
-        val origin = (if (context.player != null) Config.clientCommands else Config.serverCommands)
-            .let { originHandler ->
-                originHandler.commandList.associate {
-                    it.text.lowercase() to CommandInfo(null, it.text, it.description) {
-                        usage = it.paramText
-                        body {
-                            (if (originHandler is MyCommandHandler) originHandler.origin else originHandler).handleMessage(
-                                originHandler.prefix + it.text + " " + arg.joinToString(" "),
-                                player
-                            )
+object RootCommands {
+    private object Impl : Commands() {
+        override fun getSubCommands(context: CommandContext?): Map<String, CommandInfo> {
+            if (context == null) return Root.getSubCommands(null)
+            //合并原版指令
+            val origin = (if (context.player != null) Config.clientCommands else Config.serverCommands)
+                .let { originHandler ->
+                    originHandler.commandList.associate {
+                        it.text.lowercase() to CommandInfo(null, it.text, it.description) {
+                            usage = it.paramText
+                            body {
+                                (if (originHandler is MyCommandHandler) originHandler.origin else originHandler).handleMessage(
+                                    originHandler.prefix + it.text + " " + arg.joinToString(" "),
+                                    player
+                                )
+                            }
                         }
                     }
                 }
-            }
-        return origin + subCommands.filterValues { if (context.player != null) it.type.client() else it.type.server() }
-    }
-
-    override fun addSub(name: String, command: CommandInfo, isAliases: Boolean) {
-        if (command.type.server())
-            Config.serverCommands.removeCommand(name)
-        if (command.type.client())
-            Config.clientCommands.removeCommand(name)
-        return super.addSub(name, command, isAliases)
+            return origin + Root.getSubCommands(context)
+                .filterValues { if (context.player != null) it.type.client() else it.type.server() }
+        }
     }
 
     init {
@@ -65,7 +65,7 @@ object RootCommands : Commands() {
     suspend fun tabComplete(player: Player?, args: List<String>): List<String> {
         var result: List<String> = emptyList()
         try {
-            onComplete(CommandContext().apply {
+            Impl.onComplete(CommandContext().apply {
                 this.player = player
                 reply = {}
                 replyTabComplete = { result = it;CommandInfo.Return() }
@@ -84,7 +84,7 @@ object RootCommands : Commands() {
     suspend fun handleInput(text: String, player: Player?, prefix: String = "") {
         if (text.isEmpty()) return
         withContext(Dispatchers.game) {
-            RootCommands.invoke(CommandContext().apply {
+            Impl.invoke(CommandContext().apply {
                 this.player = player
                 hasPermission = {
                     player == null || player.admin || player.hasPermission(it)
