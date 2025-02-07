@@ -21,10 +21,9 @@ val password by config.key("", "密码")
 // password: your_password
 
 onEnable {
-    val cClassloader = javaClass.classLoader!!
     DependencyManager {
-        requireWithChildren(Dependency.parse(driverMaven))
-        loadToClassLoader(cClassloader)
+        require(Dependency.parse(driverMaven))
+        loadToClassLoader(thisScript.javaClass.classLoader)
     }
     Class.forName(driver)
 

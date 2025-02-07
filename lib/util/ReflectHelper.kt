@@ -12,7 +12,7 @@ class ReflectDelegate<T, R>(
     override fun setValue(thisRef: T?, property: KProperty<*>, value: R) = field.set(thisRef, value)
 }
 
-inline fun <reified T, reified R> reflectDelegate() = DSLBuilder.nameGet { name ->
+inline fun <reified T, reified R> reflectDelegate() = DSLBuilder.NameGet { name ->
     val field = T::class.java.getDeclaredField(name)
     if (!field.isAccessible) field.isAccessible = true
     ReflectDelegate<T, R>(field, R::class.java)

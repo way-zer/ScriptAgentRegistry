@@ -27,32 +27,30 @@ onEnable {
             aliases = listOf("ls", "列出")
             onComplete {
                 onComplete(0) {
-                    ScriptRegistry.allScripts { it.source.isModule }.map { it.id }
+                    ScriptRegistry.allScripts().map { it.id.substringBefore(Config.idSeparator) }
+                        .toSet().sortedBy { it }
                 }
             }
             body {
-                fun Collection<ScriptInfo>.toReply(pad: Int) = map {
-                    val enable = if (it.enabled) "purple" else "reset"
-                    "[{enable}][{state}] {name} [blue]{desc}".with(
-                        "enable" to enable, "state" to it.scriptState, "name" to it.id.padEnd(pad),
-                        "desc" to (it.failReason ?: it.inst?.name ?: "")
-                    )
+                val module = arg.getOrNull(0) ?: kotlin.run {
+                    val counts = ScriptRegistry.allScripts().map { it.id.substringBefore(Config.idSeparator) }
+                        .groupBy { it }.mapValues { it.value.size }
+                    val list = counts.entries.sortedBy { it.key }
+                        .map { "[purple]${(it.key + "...").padEnd(20)} [blue]${it.value}" }
+                    returnReply("[yellow]==== [light_yellow]已加载模块[yellow] ====\n{list:\n}".with("list" to list))
                 }
-                if (arg.isEmpty()) {
-                    val list = ScriptRegistry.allScripts { it.source.isModule }.toReply(20)
-                    reply("[yellow]==== [light_yellow]已加载模块[yellow] ====\n{list:\n}".with("list" to list))
-                } else {
-                    val module = arg[0]
-                    val list = ScriptRegistry.allScripts {
-                        if (module.equals("fail", true)) it.failReason != null
-                        else it.id.startsWith(module + Config.idSeparator)
-                    }.toReply(30)
-                    reply(
-                        "[yellow]==== [light_yellow]{module}脚本[yellow] ====\n{list:\n}".with(
-                            "module" to module, "list" to list
-                        )
-                    )
+                val list = ScriptRegistry.allScripts {
+                    if (module.equals("fail", true)) it.failReason != null
+                    else it.id.startsWith(module + Config.idSeparator)
+                }.map {
+                    if (it.enabled) "[purple][${it.scriptState}] ${it.id}"
+                    else "[reset][${it.scriptState}] ${it.id.padEnd(30)} ${it.failReason.orEmpty()}"
                 }
+                reply(
+                    "[yellow]==== [light_yellow]{module}脚本[yellow] ====\n{list:\n}".with(
+                        "module" to module, "list" to list
+                    )
+                )
             }
         })
         addSub(CommandInfo(thisRef, "load", "(重新)加载一个脚本或者模块") {
@@ -71,7 +69,7 @@ onEnable {
                 val script = ScriptRegistry.findScriptInfo(arg[0])
                     ?: returnReply("[red]找不到模块或者脚本".with())
                 if (noCache) {
-                    val file = Config.cacheFile(script.id, script.source.isModule)
+                    val file = Config.cacheFile(script.id)
                     reply("[yellow]清理cache文件{name}".with("name" to file.name))
                     file.delete()
                 }
