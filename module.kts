@@ -32,10 +32,12 @@ listen<EventType.ResetEvent> {
 listen<EventType.ResetEvent> {
     //try update child scripts
     ScriptRegistry.scanRoot()
-    ScriptManager.transaction {
-        add("$moduleId/")
-        removeIf { it.compiledScript?.source.run { this == null || this == it.source } }
-        if (isNotEmpty()) MindustryDispatcher.safeBlocking {
+    MindustryDispatcher.safeBlocking {
+        ScriptManager.transaction {
+            add("$moduleId/")
+            removeIf { it.compiledScript?.source.run { this == null || this == it.source } }
+            if (isNotEmpty()) return@transaction
+
             logger.info("Unload outdated script: ${toList()}")
             unload()//unload all updatable
         }
