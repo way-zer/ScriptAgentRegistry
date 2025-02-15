@@ -51,6 +51,7 @@ object RootCommands {
 @Deprecated(
     "move to coreLibrary",
     ReplaceWith("command(name,description.with()){init()}", "coreLibrary.lib.command"),
+    DeprecationLevel.HIDDEN
 )
 fun Script.command(
     name: String,
