@@ -1,8 +1,10 @@
 @file:Depends("coreLibrary")
+@file:Depends("coreLibrary/kcp/serialization", "JSON序列化")
+
 @file:Import("io.ktor:ktor-server-netty-jvm:3.0.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-server-content-negotiation-jvm:3.0.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-client-content-negotiation-jvm:3.0.1", mavenDepends = true)
-@file:Import("io.ktor:ktor-serialization-jackson-jvm:3.0.1", mavenDepends = true)
+@file:Import("io.ktor:ktor-serialization-kotlinx-json-jvm:3.0.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-client-cio-jvm:3.0.1", mavenDepends = true)
 @file:Import("ktor.lib.*", defaultImport = true)
 @file:Import("io.ktor.http.*", defaultImport = true)
@@ -16,7 +18,7 @@ package ktor
 import cf.wayzer.scriptAgent.events.ScriptEnableEvent
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.serialization.jackson.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.channels.BufferOverflow
@@ -31,7 +33,7 @@ val port by config.key(9090, "Web 端口")
 onEnable {
     KtorClient = HttpClient(CIO) {
         install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
-            jackson {}
+            json()
         }
     }
     onDisable { KtorClient.close() }
