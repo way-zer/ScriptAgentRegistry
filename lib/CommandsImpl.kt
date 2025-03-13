@@ -34,15 +34,14 @@ object RootCommands {
 
     /**
      * @param text 输入字符串，应当经过trimInput处理
-     * @param prefix 指令前缀,例如'/'
      */
     suspend fun handleInput(text: String, prefix: String = "") {
         if (text.isEmpty()) return
         Commands.Root(CommandContext().apply {
             hasPermission = { true }
             reply = { println(ColorApi.handle(it.toString(), ColorApi::consoleColorHandler)) }
-            this.prefix = prefix.ifEmpty { "* " }
-            this.arg = text.removePrefix(prefix).split(' ')
+            this.prefix = prefix
+            this.arg = text.split(' ')
         })
     }
 }
