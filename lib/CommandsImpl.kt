@@ -37,12 +37,13 @@ object RootCommands {
      */
     suspend fun handleInput(text: String, prefix: String = "") {
         if (text.isEmpty()) return
-        Commands.Root(CommandContext().apply {
+        CommandContext().apply {
             hasPermission = { true }
             reply = { println(ColorApi.handle(it.toString(), ColorApi::consoleColorHandler)) }
             this.prefix = prefix
             this.arg = text.split(' ')
-        })
+            Commands.Root.handle()
+        }
     }
 }
 
