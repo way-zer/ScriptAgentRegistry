@@ -8,8 +8,8 @@ import cf.wayzer.scriptAgent.util.DSLBuilder
 import coreLibrary.lib.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.bukkit.Bukkit
-import org.bukkit.ChatColor
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -37,10 +37,11 @@ class BukkitCommandWrapper(val info: CommandInfo) :
             prefix = "/$commandLabel "
             arg = args.toList()
         }
+        val dispatcher = if (sender is Player) Dispatchers.entity(sender) else Dispatchers.game
         val scope = (info.script ?: thisContextScript().apply {
             logger.log(Level.WARNING, "$info don't associate with Script, it's required for CoroutineScope")
         })
-        scope.launch(Dispatchers.game) {
+        scope.launch(dispatcher) {
             with(content) { info.handle() }
         }
         return true
@@ -55,14 +56,23 @@ class BukkitCommandWrapper(val info: CommandInfo) :
             prefix = "/$alias "
             arg = args.toList()
         }
-
-        BukkitDispatcher.safeBlocking {
-            try {
-                info.onComplete(context)
-            } catch (_: CommandInfo.Return) {
+        if (sender is Player) {
+            Dispatchers.entity(sender).safeBlocking {
+                try {
+                    info.onComplete(context)
+                } catch (_: CommandInfo.Return) {
+                }
+            }
+        } else {
+            //Console use console thread, not main thread
+            runBlocking(Dispatchers.game) {
+                try {
+                    info.onComplete(context)
+                } catch (_: CommandInfo.Return) {
+                }
             }
         }
-        return result
+        return result.filter { it.startsWith(args.last()) }//Bukkit don't filter
     }
 
     override fun onCommand(
@@ -85,6 +95,7 @@ class BukkitCommandWrapper(val info: CommandInfo) :
 
     companion object {
         fun registryGlobal(command: CommandInfo) {
+            @Suppress("UnstableApiUsage")
             Bukkit.getCommandMap().register(Config.pluginMain.pluginMeta.name, BukkitCommandWrapper(command))
         }
 
@@ -94,26 +105,27 @@ class BukkitCommandWrapper(val info: CommandInfo) :
             }
         }
 
+        @Suppress("DEPRECATION")
         fun minecraftColorHandler(color: ColorApi.Color): String {
             return when (color) {
-                ConsoleColor.RESET -> ChatColor.RESET
-                ConsoleColor.BOLD -> ChatColor.BOLD
-                ConsoleColor.ITALIC -> ChatColor.ITALIC
-                ConsoleColor.UNDERLINED -> ChatColor.UNDERLINE
-                ConsoleColor.BLACK -> ChatColor.BLACK
-                ConsoleColor.RED -> ChatColor.DARK_RED
-                ConsoleColor.GREEN -> ChatColor.DARK_GREEN
-                ConsoleColor.YELLOW -> ChatColor.YELLOW
-                ConsoleColor.BLUE -> ChatColor.DARK_BLUE
-                ConsoleColor.PURPLE -> ChatColor.DARK_PURPLE
-                ConsoleColor.CYAN -> ChatColor.DARK_AQUA
-                ConsoleColor.LIGHT_RED -> ChatColor.RED
-                ConsoleColor.LIGHT_GREEN -> ChatColor.GREEN
-                ConsoleColor.LIGHT_YELLOW -> ChatColor.YELLOW
-                ConsoleColor.LIGHT_BLUE -> ChatColor.BLUE
-                ConsoleColor.LIGHT_PURPLE -> ChatColor.LIGHT_PURPLE
-                ConsoleColor.LIGHT_CYAN -> ChatColor.AQUA
-                ConsoleColor.WHITE -> ChatColor.WHITE
+                ConsoleColor.RESET -> org.bukkit.ChatColor.RESET
+                ConsoleColor.BOLD -> org.bukkit.ChatColor.BOLD
+                ConsoleColor.ITALIC -> org.bukkit.ChatColor.ITALIC
+                ConsoleColor.UNDERLINED -> org.bukkit.ChatColor.UNDERLINE
+                ConsoleColor.BLACK -> org.bukkit.ChatColor.BLACK
+                ConsoleColor.RED -> org.bukkit.ChatColor.DARK_RED
+                ConsoleColor.GREEN -> org.bukkit.ChatColor.DARK_GREEN
+                ConsoleColor.YELLOW -> org.bukkit.ChatColor.YELLOW
+                ConsoleColor.BLUE -> org.bukkit.ChatColor.DARK_BLUE
+                ConsoleColor.PURPLE -> org.bukkit.ChatColor.DARK_PURPLE
+                ConsoleColor.CYAN -> org.bukkit.ChatColor.DARK_AQUA
+                ConsoleColor.LIGHT_RED -> org.bukkit.ChatColor.RED
+                ConsoleColor.LIGHT_GREEN -> org.bukkit.ChatColor.GREEN
+                ConsoleColor.LIGHT_YELLOW -> org.bukkit.ChatColor.YELLOW
+                ConsoleColor.LIGHT_BLUE -> org.bukkit.ChatColor.BLUE
+                ConsoleColor.LIGHT_PURPLE -> org.bukkit.ChatColor.LIGHT_PURPLE
+                ConsoleColor.LIGHT_CYAN -> org.bukkit.ChatColor.AQUA
+                ConsoleColor.WHITE -> org.bukkit.ChatColor.WHITE
                 else -> return ""
             }.toString()
         }
