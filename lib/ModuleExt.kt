@@ -2,38 +2,25 @@ package coreBukkit.lib
 
 import cf.wayzer.scriptAgent.Config
 import cf.wayzer.scriptAgent.define.Script
+import cf.wayzer.scriptAgent.define.ScriptDsl
+import cf.wayzer.scriptAgent.thisScript
 import cf.wayzer.scriptAgent.util.DSLBuilder
-import coreBukkit.lib.ModuleExt.registerCls
-import coreBukkit.lib.ModuleExt.unregisterCls
-import org.bukkit.Bukkit
-import org.bukkit.command.CommandMap
+import kotlinx.coroutines.launch
 import org.bukkit.command.PluginCommand
 import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.plugin.java.JavaPluginLoader
 
-object ModuleExt{
-    internal fun registerCls(cls: Class<*>) {
-        val m = JavaPluginLoader::class.java.getDeclaredMethod("setClass", String::class.java, Class::class.java)
-        m.isAccessible = true
-        m.invoke(Config.pluginMain.pluginLoader, cls.name, cls)
-    }
-    internal fun unregisterCls(cls: Class<*>) {
-        val m = JavaPluginLoader::class.java.getDeclaredMethod("removeClass", String::class.java)
-        m.isAccessible = true
-        m.invoke(Config.pluginMain.pluginLoader, cls.name)
-    }
-    fun getCommandMap(): CommandMap {
-        val server = Bukkit.getServer()
-        return server::class.java.getMethod("getCommandMap").invoke(server) as CommandMap
-    }
-}
-val Config.pluginMain by DSLBuilder.dataKeyWithDefault<JavaPlugin>{ error("pluginMain can't be null") }
-val Config.pluginCommand by DSLBuilder.dataKeyWithDefault<PluginCommand>{ error("pluginCommand can't be null") }
-fun Script.exportClass(clazz: Class<*>){
-    onEnable(1){
-        registerCls(clazz)
-    }
-    onDisable{
-        unregisterCls(clazz)
+val Config.pluginMain by DSLBuilder.lateInit<JavaPlugin>()
+val Config.pluginCommand by DSLBuilder.lateInit<PluginCommand>()
+private val Config.delayEnable by DSLBuilder.lateInit<MutableList<Runnable>>()
+
+/** onEnable执行
+ * 所有脚本会在插件[JavaPlugin.onLoad]阶段加载完毕，此时只能注册事件，不允许去调用其他插件。
+ * 故提供该接口，将延迟到[JavaPlugin.onEnable]阶段执行。重载脚本时，必然已经完成，等效于[Script.onEnable]*/
+@ScriptDsl
+fun Script.afterPluginsLoaded(block: suspend () -> Unit) = onEnable {
+    if (Config.pluginMain.isEnabled) return@onEnable block()
+    Config.delayEnable.add {
+        if (!enabled) return@add
+        thisScript.launch { block() }
     }
 }
