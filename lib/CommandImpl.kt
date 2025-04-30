@@ -100,8 +100,12 @@ class BukkitCommandWrapper(val info: CommandInfo) :
         }
 
         fun unregisterGlobal(command: CommandInfo) {
-            Bukkit.getCommandMap().knownCommands.entries.removeIf {
-                (it.value as? BukkitCommandWrapper)?.info == command
+            Bukkit.getCommandMap().knownCommands.apply {
+                entries.filter {//removeIf not supported
+                    (it.value as? BukkitCommandWrapper)?.info == command
+                }.forEach {
+                    remove(it.key, it.value)
+                }
             }
         }
 
