@@ -5,6 +5,7 @@ import coreBukkit.lib.pluginMain
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.metadata.Metadatable
 import superitem.lib.Feature
+import superitem.lib.itemName
 
 interface DataStore<T> {
     fun set(o: Metadatable, value: T?)
@@ -13,7 +14,7 @@ interface DataStore<T> {
     class MetaStore<T> : Feature<Nothing>(), DataStore<T> {
         override val defaultData = null
         private val key: String
-            get() = "SIMS_${item.clsName}"
+            get() = "SIMS_${item.itemName}"
 
         override fun <T> get(o: Metadatable, defaultValue: T): T {
             @Suppress("UNCHECKED_CAST")

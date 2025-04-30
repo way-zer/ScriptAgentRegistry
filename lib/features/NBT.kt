@@ -1,9 +1,8 @@
 package superitem.lib.features
 
-import coreLibrary.lib.logger
-import de.tr7zw.changeme.nbtapi.NBTCompound
-import de.tr7zw.changeme.nbtapi.NBTItem
-import de.tr7zw.changeme.nbtapi.utils.MinecraftVersion
+import de.tr7zw.nbtapi.NBTCompound
+import de.tr7zw.nbtapi.NBTItem
+import de.tr7zw.nbtapi.utils.MinecraftVersion
 import org.bukkit.inventory.ItemStack
 import superitem.lib.Feature
 import superitem.lib.get
@@ -15,7 +14,8 @@ import java.util.logging.Level
  * @sss me.dpohvar.powernbt.api.NBTManager
  */
 @Suppress("unused")
-class NBT(override vararg val defaultData: AttributeModifier) : Feature<Array<out NBT.AttributeModifier>>(), Feature.OnPostLoad {
+class NBT(override vararg val defaultData: AttributeModifier) : Feature<Array<out NBT.AttributeModifier>>(),
+    Feature.OnPostLoad {
     enum class AttributeType(val attributeName: String, val max: Double) {
         MaxHealth("generic.maxHealth", 1024.0),
         FollowRange("generic.followRange", 20485.0),
@@ -48,10 +48,10 @@ class NBT(override vararg val defaultData: AttributeModifier) : Feature<Array<ou
      * @param slot 生效的槽位(默认(null)代表所有槽位)
      */
     data class AttributeModifier(
-            val type: AttributeType,
-            val amount: Double,
-            val operation: AttributeOperation,
-            val slot: UseSlot? = null
+        val type: AttributeType,
+        val amount: Double,
+        val operation: AttributeOperation,
+        val slot: UseSlot? = null
     )
 
     override fun onPostLoad() {

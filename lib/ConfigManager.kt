@@ -45,5 +45,5 @@ object ConfigManager {
         get() = map.getOrPut(this) { readFile(configFile) }
 
     private val Item.configFile: File
-        get() = File(rootDir, "${clsName}.json")
+        get() = File(rootDir, "${itemName}.json")
 }

@@ -8,6 +8,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.ItemMeta
 import superitem.lib.Feature
 import superitem.lib.events.ItemStackHandleEvent
+import superitem.lib.itemName
 
 /**
  * 设置item的物品信息
@@ -73,7 +74,7 @@ class ItemInfo(
         loadOther(im, itemStack)
         itemStack.itemMeta = im
         val nbt = NBT.API.readOrCreate(itemStack)
-        nbt.setString(NBT_TAG_NAME, item.clsName)
+        nbt.setString(NBT_TAG_NAME, item.itemName)
         NBT.API.write(itemStack, nbt)
 
         this.itemStackTemplate = itemStack
