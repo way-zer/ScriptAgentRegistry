@@ -1,0 +1,7 @@
+ID coreBukkit
+FQ_NAME coreBukkit.Module
++DEPENDS coreLibrary 
++IMPORT DefaultImport coreBukkit.lib.*
++IMPORT DefaultImport org.bukkit.ChatColor.*
++IMPORT LibraryByClassLoader org.bukkit.Bukkit
+

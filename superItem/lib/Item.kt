@@ -7,6 +7,8 @@ import kotlin.reflect.KClass
 
 typealias Item = Script
 
+val Item.itemName get() = javaClass.simpleName.uppercase()
+
 val Script.isItem get() = featuresKey.run { get() != null }
 
 fun <T : Feature<out Any>> Item.require(feature: T): T {
@@ -28,7 +30,7 @@ inline fun <reified T : Feature<*>> Item.has() = !features[T::class].isNullOrEmp
  * @exception RuntimeException 如果不存在指定类型的feature
  */
 inline fun <reified T : Feature<*>> Item.get(index: Int = 0): T = features[T::class]?.getOrNull(index) as? T
-    ?: throw RuntimeException("[$clsName] Can't find ${T::class.simpleName}[$index], may you forget require it")
+    ?: throw RuntimeException("[$itemName] Can't find ${T::class.simpleName}[$index], may you forget require it")
 
 // 判断物品是否是当前Item的道具
 fun Item.isItem(itemStack: ItemStack?) = SIManager.getItem(itemStack)?.equals(this) ?: false

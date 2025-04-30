@@ -1,0 +1,16 @@
+ID superItem
+FQ_NAME superitem.Module
++DEPENDS coreBukkit 
++IMPORT DefaultImport org.bukkit.Material
++IMPORT DefaultImport superitem.lib.*
++IMPORT DefaultImport superitem.lib.features.*
++IMPORT LibraryByClass de.tr7zw.nbtapi.NBTItem
+
+ID superItem/WolfBone
+FQ_NAME WolfBone
++DEPENDS superItem module
+
+ID superItem/commands
+FQ_NAME superitem.Commands
++DEPENDS superItem module
+

@@ -1,21 +1,16 @@
-@file:Depends("coreBukkit")
-@file:Import("https://repo.codemc.org/repository/maven-public/", mavenRepository = true)
-@file:Import("de.tr7zw:item-nbt-api:2.9.0-SNAPSHOT", mavenDepends = true)
+//@file:Depends("coreBukkit")
 @file:Import("superitem.lib.*", defaultImport = true)
 @file:Import("superitem.lib.features.*", defaultImport = true)
 @file:Import("org.bukkit.Material", defaultImport = true)
+@file:Import("de.tr7zw.nbtapi.NBTItem", libraryByClass = true)
 
 package superitem
 
 import cf.wayzer.scriptAgent.events.ScriptDisableEvent
 import cf.wayzer.scriptAgent.events.ScriptEnableEvent
-import superitem.lib.events.ItemStackHandleEvent
-import superitem.lib.events.SuperItemEvent
 import kotlin.collections.set
 
 name = "SuperItem 模块"
-exportClass(ItemStackHandleEvent::class.java)
-exportClass(SuperItemEvent::class.java)
 
 onEnable {
     ConfigManager.init(Config.dataDir.resolve("superitem"))
@@ -37,11 +32,11 @@ listenTo<ScriptEnableEvent>(Event.Priority.Before) {
 }
 listenTo<ScriptEnableEvent>(Event.Priority.After) {
     if (!script.isItem) return@listenTo
-    SIManager.items[script.clsName.uppercase()] = script
+    SIManager.items[script.itemName] = script
     ConfigManager.saveForItem(script)
 }
 
 listenTo<ScriptDisableEvent>(Event.Priority.After) {
     if (!script.isItem) return@listenTo
-    SIManager.items.remove(script.clsName.uppercase())
+    SIManager.items.remove(script.itemName)
 }

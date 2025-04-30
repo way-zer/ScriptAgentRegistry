@@ -20,6 +20,7 @@ import org.bukkit.event.inventory.CraftItemEvent
 import superitem.lib.Feature
 import superitem.lib.Item
 import superitem.lib.isItem
+import superitem.lib.itemName
 
 /**
  * **自动Require
@@ -27,7 +28,7 @@ import superitem.lib.isItem
  * @param default 物品的权限(默认superitem.name)
  */
 class Permission(private val default: String? = null) : Feature<String>(), Listener {
-    override val defaultData by lazy { default ?: "superitem.${item.clsName}" }
+    override val defaultData by lazy { default ?: "superitem.${item.itemName}" }
 
     /**
      * 判断玩家是否有权限
