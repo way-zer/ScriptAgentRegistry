@@ -5,19 +5,6 @@ import cf.wayzer.scriptAgent.define.ScriptDsl
 import coreLibrary.lib.*
 
 object RootCommands {
-    suspend fun tabComplete(args: List<String>): List<String> {
-        var result: List<String> = emptyList()
-        try {
-            Commands.Root.onComplete(CommandContext().apply {
-                reply = {}
-                replyTabComplete = { result = it;CommandInfo.Return() }
-                arg = args
-            })
-        } catch (_: CommandInfo.Return) {
-        }
-        return result
-    }
-
     fun trimInput(text: String) = buildString {
         var start = 0
         var end = text.length - 1
@@ -37,8 +24,7 @@ object RootCommands {
      */
     suspend fun handleInput(text: String, prefix: String = "") {
         if (text.isEmpty()) return
-        CommandContext().apply {
-            hasPermission = { true }
+        CommandContext.Command().apply {
             reply = { println(ColorApi.handle(it.toString(), ColorApi::consoleColorHandler)) }
             this.prefix = prefix
             this.arg = text.split(' ')
