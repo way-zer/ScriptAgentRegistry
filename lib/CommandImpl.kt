@@ -4,7 +4,6 @@ package coreBukkit.lib
 
 import cf.wayzer.scriptAgent.Config
 import cf.wayzer.scriptAgent.thisContextScript
-import cf.wayzer.scriptAgent.util.DSLBuilder
 import coreLibrary.lib.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,11 +16,17 @@ import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 import java.util.logging.Level
 
+class BukkitCommandReceiver(val sender: CommandSender) : CommandContext.IReceiver {
+    override suspend fun hasPermission(node: String): Boolean {
+        return sender.hasPermission(node)
+    }
+}
+
 class BukkitCommandWrapper(val info: CommandInfo) :
     Command(info.name, info.description.toString(), info.usage, info.aliases),
     CommandExecutor, TabCompleter {
     override fun execute(sender: CommandSender, commandLabel: String, args: Array<out String>): Boolean {
-        val content = CommandContext().apply {
+        val content = CommandContext.Command().apply {
             reply = { msg ->
                 msg.with("receiver" to sender, "player" to sender).toString()
                     .let {
@@ -32,8 +37,7 @@ class BukkitCommandWrapper(val info: CommandInfo) :
                     }
                     .let(sender::sendMessage)
             }
-            this.sender = sender
-            hasPermission = { sender.hasPermission(it) }
+            receiver = BukkitCommandReceiver(sender)
             prefix = "/$commandLabel "
             arg = args.toList()
         }
@@ -48,11 +52,8 @@ class BukkitCommandWrapper(val info: CommandInfo) :
     }
 
     override fun tabComplete(sender: CommandSender, alias: String, args: Array<out String>): List<String> {
-        var result: List<String> = emptyList()
-        val context = CommandContext().apply {
-            this.sender = sender
-            hasPermission = { sender.hasPermission(it) }
-            replyTabComplete = { result = it;CommandInfo.Return() }
+        val context = CommandContext.TabComplete().apply {
+            receiver = BukkitCommandReceiver(sender)
             prefix = "/$alias "
             arg = args.toList()
         }
@@ -72,7 +73,7 @@ class BukkitCommandWrapper(val info: CommandInfo) :
                 }
             }
         }
-        return result.filter { it.startsWith(args.last()) }//Bukkit don't filter
+        return context.result.filter { it.startsWith(args.last()) }//Bukkit don't filter
     }
 
     override fun onCommand(
@@ -136,5 +137,5 @@ class BukkitCommandWrapper(val info: CommandInfo) :
     }
 }
 
-var CommandContext.sender by DSLBuilder.dataKey<CommandSender>()
+val CommandContext.sender get() = (receiver as? BukkitCommandReceiver)?.sender
 val CommandContext.player get() = sender as? Player
