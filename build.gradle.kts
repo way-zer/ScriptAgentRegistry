@@ -10,11 +10,11 @@ repositories {
 dependencies {
     defineModule("bootStrap") {}
     defineModule("coreBukkit") {
-        dependsModule("coreLibrary", parent!!)
+        dependsOnModule("coreLibrary", parent!!)
         api("dev.folia:folia-api")
     }
     defineModule("superItem") {
-        dependsModule("coreBukkit")
+        dependsOnModule("coreBukkit")
         implementation("de.tr7zw:item-nbt-api-plugin:2.15.0")
     }
 }
