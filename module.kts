@@ -1,11 +1,11 @@
 @file:Depends("coreLibrary")
 @file:Depends("kcp/serialization")
 
-@file:Import("io.ktor:ktor-server-netty-jvm:3.1.1", mavenDepends = true)
-@file:Import("io.ktor:ktor-server-content-negotiation-jvm:3.1.1", mavenDepends = true)
-@file:Import("io.ktor:ktor-client-content-negotiation-jvm:3.1.1", mavenDepends = true)
-@file:Import("io.ktor:ktor-serialization-kotlinx-json-jvm:3.1.1", mavenDepends = true)
-@file:Import("io.ktor:ktor-client-cio-jvm:3.1.1", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-netty-jvm:3.3.3", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-content-negotiation-jvm:3.3.3", mavenDepends = true)
+@file:Import("io.ktor:ktor-client-content-negotiation-jvm:3.3.3", mavenDepends = true)
+@file:Import("io.ktor:ktor-serialization-kotlinx-json-jvm:3.3.3", mavenDepends = true)
+@file:Import("io.ktor:ktor-client-cio-jvm:3.3.3", mavenDepends = true)
 
 @file:Import("ktor.lib.*", defaultImport = true)
 @file:Import("io.ktor.http.*", defaultImport = true)

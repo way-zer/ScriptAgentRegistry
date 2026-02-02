@@ -1,4 +1,4 @@
-@file:Import("io.ktor:ktor-server-call-logging-jvm:3.1.1", mavenDepends = true)
+@file:Import("io.ktor:ktor-server-call-logging-jvm:3.3.3", mavenDepends = true)
 
 package ktor
 
