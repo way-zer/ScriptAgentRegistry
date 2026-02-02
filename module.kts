@@ -1,5 +1,5 @@
 @file:Depends("coreLibrary")
-@file:CompileDepends("kcp/serialization")
+@file:Depends("kcp/serialization")
 
 @file:Import("io.ktor:ktor-server-netty-jvm:3.1.1", mavenDepends = true)
 @file:Import("io.ktor:ktor-server-content-negotiation-jvm:3.1.1", mavenDepends = true)
