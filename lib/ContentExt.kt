@@ -21,7 +21,7 @@ fun Script.routing(body: Routing.() -> Unit) {
 @Deprecated(
     "use routing", ReplaceWith(
         "routing { route(path, method, body) }"
-    )
+    ), level = DeprecationLevel.ERROR
 )
 fun Script.route(path: String, method: HttpMethod, body: Route.() -> Unit) {
     routing {
@@ -32,7 +32,7 @@ fun Script.route(path: String, method: HttpMethod, body: Route.() -> Unit) {
 @Deprecated(
     "use routing", ReplaceWith(
         "routing { route(path, body) }"
-    )
+    ), level = DeprecationLevel.ERROR
 )
 fun Script.route(path: String, body: Route.() -> Unit) {
     routing {

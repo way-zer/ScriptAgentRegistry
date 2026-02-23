@@ -54,7 +54,7 @@ onEnable {
         connector { this.port = port }
     }.start()
     onDisable {
-        server.stop(1000, 5000)
+        server.stopSuspend(1000, 5000)
     }
     @OptIn(FlowPreview::class)
     reloadFlow.debounce(1000)
