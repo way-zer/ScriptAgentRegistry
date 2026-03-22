@@ -1,3 +1,5 @@
+@file:Depends("wayzer/map/mapSnap", "缩略图生成", soft = true)
+
 package mirai
 
 import cf.wayzer.placehold.PlaceHoldApi
@@ -9,7 +11,7 @@ import javax.imageio.ImageIO
 
 val address by config.key("", "服务器地址,为空则不显示")
 
-globalEventChannel().subscribeGroupMessages {
+globalEventChannel().subscribeMessages {
     case("服务器状态") {
         @Suppress("UNCHECKED_CAST")
         val getMapSnap = PlaceHoldApi.GlobalContext.VarToken("wayzer.ext.mapSnap._get").get() as? () -> BufferedImage

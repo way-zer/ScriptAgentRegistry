@@ -1,0 +1,12 @@
+ID mirai
+FQ_NAME mirai.Module
++DEPENDS coreLibrary 
++IMPORT DefaultImport mirai.lib.*
++IMPORT DefaultImport net.mamoe.mirai.contact.*
++IMPORT DefaultImport net.mamoe.mirai.event.*
++IMPORT DefaultImport net.mamoe.mirai.event.events.*
++IMPORT DefaultImport net.mamoe.mirai.message.*
++IMPORT DefaultImport net.mamoe.mirai.message.data.*
++IMPORT MavenDepends net.mamoe:mirai-core-jvm:2.15.0
++IMPORT MavenDepends top.mrxiaom:qsign:1.1.0-beta
+
