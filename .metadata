@@ -1,0 +1,17 @@
+ID coreStandalone
+FQ_NAME coreStandalone.Module
++DEPENDS coreLibrary 
++IMPORT DefaultImport coreStandalone.lib.*
+
+ID coreStandalone/baseCommand
+FQ_NAME coreStandalone.BaseCommand
++DEPENDS coreStandalone module
+
+ID coreStandalone/console
+FQ_NAME coreStandalone.Console
++DEPENDS coreStandalone module
++IMPORT MavenDependsSingle org.fusesource.jansi:jansi:2.4.0
++IMPORT MavenDependsSingle org.jline:jline-reader:3.21.0
++IMPORT MavenDependsSingle org.jline:jline-terminal-jansi:3.21.0
++IMPORT MavenDependsSingle org.jline:jline-terminal:3.21.0
+
