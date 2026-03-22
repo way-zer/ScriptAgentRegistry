@@ -3,10 +3,8 @@ package coreStandalone
 command("stop", "结束程序") {
     body {
         launch(Job()) {
-            ScriptManager.transaction {
-                addAll()
-                disable()
-            }
+            @OptIn(LoaderApi::class)
+            ScriptManager.disableAll()
         }
     }
 }
