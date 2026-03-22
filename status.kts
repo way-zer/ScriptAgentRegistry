@@ -12,12 +12,12 @@ val address by config.key("", "服务器地址,为空则不显示")
 globalEventChannel().subscribeGroupMessages {
     case("服务器状态") {
         @Suppress("UNCHECKED_CAST")
-        val getMapSnap = PlaceHoldApi.GlobalContext.getVar("wayzer.ext.mapSnap._get") as? () -> BufferedImage
+        val getMapSnap = PlaceHoldApi.GlobalContext.VarToken("wayzer.ext.mapSnap._get").get() as? () -> BufferedImage
         val addressInfo = if (address.isEmpty()) "" else "服务器地址: $address "
         var msg = this.message.quote() + """
                 {addressInfo}版本 {game.version}
                 当前地图为: [{map.id}]{map.name} 
-                波数: {state.wave} 本局游戏时间: {state.gameTime:分钟}
+                波数: {state.wave} 本局游戏时间: {state.gameTime 分钟}
                 服务器TPS: {tps} 内存占用(MB) {heapUse}
                 当前人数: {state.playerSize} 总单位数: {state.allUnit}
             """.trimIndent().with("addressInfo" to addressInfo, "receiver" to this.sender).toString()
