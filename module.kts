@@ -1,6 +1,5 @@
 @file:Depends("coreLibrary")
 @file:Import("net.mamoe:mirai-core-jvm:2.15.0", mavenDepends = true)
-@file:Import("top.mrxiaom:qsign:1.1.0-beta", mavenDepends = true)
 @file:Import("mirai.lib.*", defaultImport = true)
 @file:Import("net.mamoe.mirai.event.*", defaultImport = true)
 @file:Import("net.mamoe.mirai.event.events.*", defaultImport = true)
@@ -18,7 +17,6 @@ import net.mamoe.mirai.utils.BotConfiguration
 import net.mamoe.mirai.utils.MiraiLogger
 import net.mamoe.mirai.utils.MiraiLoggerPlatformBase
 import net.mamoe.mirai.utils.StandardCharImageLoginSolver
-import top.mrxiaom.qsign.QSignService
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -65,14 +63,6 @@ withContextClassloader {
     net.mamoe.mirai.utils.Services.register(
         MiraiLogger.Factory::class.qualifiedName!!, LoggerFactory::class.qualifiedName!!, ::LoggerFactory
     )
-    val txlib = Config.dataDir.resolve("txlib/8.9.73")
-    if (txlib.exists()) {
-        QSignService.Factory.apply {
-            init(txlib)
-            loadProtocols()
-            register()
-        }
-    } else logger.warning("txLib不存在，跳过QSign")
     globalEventChannel()
 }//init
 Logger.getLogger("com.github.unidbg").level = Level.OFF
